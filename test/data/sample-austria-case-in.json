@@ -1,0 +1,70 @@
+{
+    "key": "K9KDF6PK",
+    "version": 12,
+    "library": {
+        "type": "group",
+        "id": 2318535,
+        "name": "euro-expert",
+        "links": {
+            "alternate": {
+                "href": "https://www.zotero.org/groups/2318535",
+                "type": "text/html"
+            }
+        }
+    },
+    "links": {
+        "self": {
+            "href": "https://api.zotero.org/groups/2318535/items/K9KDF6PK",
+            "type": "application/json"
+        },
+        "alternate": {
+            "href": "https://www.zotero.org/groups/2318535/items/K9KDF6PK",
+            "type": "text/html"
+        }
+    },
+    "meta": {
+        "createdByUser": {
+            "id": 6204,
+            "username": "fbennett",
+            "name": "Frank Bennett",
+            "links": {
+                "alternate": {
+                    "href": "https://www.zotero.org/fbennett",
+                    "type": "text/html"
+                }
+            }
+        },
+        "parsedDate": "2004-12-01",
+        "numChildren": 1
+    },
+    "data": {
+        "key": "K9KDF6PK",
+        "version": 12,
+        "itemType": "case",
+        "caseName": "",
+        "creators": [],
+        "abstractNote": "[elided]",
+        "reporter": "",
+        "reporterVolume": "",
+        "court": "ogh",
+        "docketNumber": "13Os127/04",
+        "firstPage": "",
+        "history": "",
+        "dateDecided": "December 1, 2004",
+        "language": "de",
+        "shortTitle": "",
+        "url": "",
+        "accessDate": "",
+        "rights": "",
+        "extra": "mlzsync1:0071{\"extrafields\":{\"callNumber\":\"AT364\",\"jurisdiction\":\"002atAustria|AT\"}}",
+        "tags": [
+            {
+                "tag": "Criminal law"
+            }
+        ],
+        "collections": [],
+        "relations": {},
+        "dateAdded": "2019-05-02T23:02:59Z",
+        "dateModified": "2019-05-02T23:02:59Z"
+    }
+}

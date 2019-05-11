@@ -1,0 +1,38 @@
+{
+    "name": "citeproc-cite-server",
+    "version": "1.0.0",
+    "description": "Reduces Zotero API returns to citations, tags, a link, and a key",
+    "main": "index.js",
+    "scripts": {
+        "start": "node ./index.js",
+        "test": "mocha"
+    },
+    "bin": {
+        "citeservice": "./index.js"
+    },
+    "keywords": [
+        "csl",
+        "digital",
+        "humanities",
+        "legal",
+        "informatics",
+        "jurism",
+        "reference",
+        "management"
+    ],
+    "author": "Frank Bennett",
+    "license": "ISC",
+    "dependencies": {
+        "citeproc": "^2.2.1",
+        "citeproc-abbrevs": "^1.0.1",
+        "citeproc-juris-modules": "^1.0.3",
+        "citeproc-locales": "^1.0.2",
+        "restify": "^8.3.2",
+        "zotero-to-csl": "^1.2.0",
+        "zotero2jurismcsl": "^0.0.6"
+    },
+    "devDependencies": {
+        "chai": "^4.2.0",
+        "chai-http": "^4.3.0"
+    }
+}
