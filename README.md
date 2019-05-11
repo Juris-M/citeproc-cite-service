@@ -29,14 +29,7 @@ Install globally with the usual `npm` incantation:
     bash> npm i -g citeproc-cite-service
 ```
 
-Run the tests to be sure all is well:
-
-``` bash
-    bash> npm run test
-```
-
-If `mocha` reports all tests passing, you can run the server from the
-command line as `citeservice`:
+Run the server from the command line as `citeservice`:
 ``` bash
     bash> citeservice
     citeservice listening at http://[::]:5195
@@ -46,10 +39,13 @@ Interact with the service from any local application via the 5195
 port, sending it individual raw Zotero API items as `application/json`
 in a POST call:
 ```bash
-    curl -s --data @sample.json -H "Content-Type: application/json" http://localhost:8080/euro-expert | jq .
+    curl --data @sample.json \
+      -H "Content-Type: application/json"\
+      http://localhost:8080/euro-expert \
+      | jq .
 ```
 
-With the Austrian case data used for testing, this will return the following:
+With the Austrian case data used for testing, this returns the following:
 ```bash
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
