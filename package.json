@@ -1,6 +1,6 @@
 {
     "name": "citeproc-cite-service",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "Reduces Zotero API returns to a citation, tags, a link, and a key",
     "main": "index.js",
     "scripts": {
@@ -27,7 +27,7 @@
         "url": "https://github.com/Juris-M/citeproc-cite-service.git"
     },
     "dependencies": {
-        "citeproc": "^2.2.1",
+        "citeproc": "^2.2.5",
         "citeproc-abbrevs": "^1.0.4",
         "citeproc-juris-modules": "^1.0.5",
         "citeproc-locales": "^1.0.2",
