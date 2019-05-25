@@ -1,6 +1,6 @@
 {
     "name": "citeproc-cite-service",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "description": "Reduces Zotero API returns to a citation, tags, a link, and a key",
     "main": "index.js",
     "scripts": {
