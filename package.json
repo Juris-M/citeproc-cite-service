@@ -33,7 +33,7 @@
         "citeproc-locales": "^1.0.2",
         "restify": "^8.3.2",
         "zotero-to-csl": "^1.2.0",
-        "zotero2jurismcsl": "^0.0.8"
+        "zotero2jurismcsl": "^0.0.9"
     },
     "devDependencies": {
         "chai": "^4.2.0",
