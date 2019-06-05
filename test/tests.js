@@ -54,5 +54,24 @@ describe("citeproc-cite-server", function () {
                     }
                 });
         });
+
+        it('it should return some other cite and info', (done) => {
+            var zApiItem = JSON.parse(fs.readFileSync(path.join(__dirname, "data", "sample-newcase-in.json")).toString());
+            var citeItem = JSON.parse(fs.readFileSync(path.join(__dirname, "data", "sample-newcase-out.json")).toString());
+            chai.request(server)
+                .post('/euro-expert')
+                .set('content-type', 'application/json')
+                .send(zApiItem)
+                .end(function(error, res, body) {
+                    if (error) {
+                        done(error);
+                    } else {
+                        assert.equal(res.status, 200);
+                        assert.deepEqual(res.body, citeItem);
+                        done();
+                    }
+                });
+        });
+
     });
 });
