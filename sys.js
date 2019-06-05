@@ -55,7 +55,7 @@ Sys.prototype.getAbbreviation = function(dummyListNameVar, obj, jurisdiction, ca
     var haveHit = false;
     for (var i = 0, ilen = jurisdictions.length; i < ilen; i += 1) {
         var myjurisdiction = jurisdictions[i];
-        if (this.abbrevs[myjurisdiction][category][key]) {
+        if (this.abbrevs[myjurisdiction] && this.abbrevs[myjurisdiction][category] && this.abbrevs[myjurisdiction][category][key]) {
             obj[myjurisdiction][category][key] = this.abbrevs[myjurisdiction][category][key];
             jurisdiction = myjurisdiction;
             haveHit = true;
