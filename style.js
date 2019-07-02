@@ -3,12 +3,15 @@ const path = require("path");
 const CSL = require("citeproc");
 const Sys = require("./sys").Sys;
 
-var sys = new Sys();
-var styleXml = fs.readFileSync(path.join(__dirname, "jm-chicago-fullnote-bibliography.csl")).toString();
-
-var style = new CSL.Engine(sys, styleXml);
-style.setSuppressTrailingPunctuation(true);
+function getStyle(cfg) {
+    var sys = new Sys();
+    var styleXml = fs.readFileSync(path.join(cfg.dataPath, cfg.styleName)).toString();
+    
+    var style = new CSL.Engine(sys, styleXml);
+    style.setSuppressTrailingPunctuation(true);
+    return style;
+}
 
 module.exports = {
-    style: style
+    getStyle: getStyle
 }
