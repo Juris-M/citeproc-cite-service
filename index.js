@@ -250,15 +250,15 @@ Runner.prototype.buildSiteItem = function(item) {
             cslItem = zoteroToJurism({data:item}, cslItem);
         }
         cslItem.id = itemKey;
-        this.style.sys.items = JSON.parse({itemKey: cslItem});
-        this.style.updateItems(["ITEM-1"]);
+        this.style.sys.items = JSON.parse("{\"" + itemKey + "\": " + JSON.stringify(cslItem) + "}");
+        this.style.updateItems([itemKey]);
         var country = this.extractTag(item.tags, "cn:")
     } catch (e) {
         handleError(e);
     }
     return {
         key: itemKey,
-        citation: this.style.makeCitationCluster([{"id":"ITEM-1"}]),
+        citation: this.style.makeCitationCluster([{"id":itemKey}]),
         country: country,
         tags: item.tags,
         cslItem: cslItem
