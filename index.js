@@ -315,7 +315,6 @@ Runner.prototype.doAddUpdateItems = async function(updateSpec) {
         while (updateSpec.items.add.length) {
             addSublists.push(updateSpec.items.add.slice(0, transactionSize));
             updateSpec.items.add = updateSpec.items.add.slice(transactionSize);
-            break;
         }
         for (var sublist of addSublists) {
             var items = await this.getItems(sublist);
@@ -328,7 +327,6 @@ Runner.prototype.doAddUpdateItems = async function(updateSpec) {
         while (updateSpec.items.mod.length) {
             modSublists.push(updateSpec.items.mod.slice(0, transactionSize));
             updateSpec.items.mod = updateSpec.items.mod.slice(transactionSize);
-            break;
         }
         for (var sublist of modSublists) {
             var items = await this.getItems(sublist);
@@ -349,7 +347,6 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
         while (updateSpec.attachments.add.length) {
             addSublists.push(updateSpec.attachments.add.slice(0, transactionSize));
             updateSpec.attachments.add = updateSpec.attachments.add.slice(transactionSize);
-            break;
         }
         for (var sublist of addSublists) {
             var attachments = await this.getItems(sublist);
@@ -367,7 +364,6 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
         while (updateSpec.attachments.mod.length) {
             addSublists.push(updateSpec.attachments.mod.slice(0, transactionSize));
             updateSpec.attachments.mod = updateSpec.attachments.mod.slice(transactionSize);
-            break;
         }
         for (var sublist of modSublists) {
             var attachments = await this.getItems(sublist);
