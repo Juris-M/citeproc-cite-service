@@ -8,11 +8,16 @@ const getAbbrevs = require("citeproc-abbrevs").getAbbrevs;
 var Sys = function(config){
     this.config = config;
     this.abbrevs = { "default": new CSL.AbbreviationSegments() };
-    this.abbrevs = Object.assign(this.abbrevs, getAbbrevs("euro-expert"));
     this.items = {};
 };
 
 Sys.prototype.retrieveItem = function(id){
+    // We can play it this way if we use synchronous file reads
+    var item = this.items[id];
+    if (item.jurisdiction) {
+        var countryID = item.jurisdiction.replace(/:.*$/, "");
+        this.abbrevs = Object.assign(this.abbrevs, getAbbrevs("auto-" + countryID));
+    }
     return this.items[id];
 };
 
