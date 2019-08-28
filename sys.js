@@ -16,7 +16,9 @@ Sys.prototype.retrieveItem = function(id){
     var item = this.items[id];
     if (item.jurisdiction) {
         var countryID = item.jurisdiction.replace(/:.*$/, "");
-        this.abbrevs = Object.assign(this.abbrevs, getAbbrevs("auto-" + countryID));
+        if (!this.abbrevs[countryID]) {
+            this.abbrevs = Object.assign(this.abbrevs, getAbbrevs("auto-" + countryID));
+        }
     }
     return this.items[id];
 };
