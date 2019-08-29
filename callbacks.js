@@ -65,7 +65,7 @@ var callbacks = {
                 var fileKey = fn.replace(/\.pdf/, "");
                 if (!keys[fileKey]) {
                     var filePath = path.join(this.dirs.files, fn);
-                    if (fs.exitsSync(filePath)) {
+                    if (fs.existsSync(filePath)) {
                         fs.unlinkSync(filePath);
                     }
                 }
