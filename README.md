@@ -14,17 +14,63 @@ written against v8.9.4) and the `npm` package manager.
 
 # Setup
 
-The simplest way to install the utility is with an incantation like this:
+## Installation and updates
+
+The tool can be set up by cloning its GitHub repo, or directly via
+NPM.  The commands for updating the tool differ depending on which
+installation method is used.
+
+### Installing from NPM
+
+To install directly from NPM, use the following command:
+
+``` bash
+    bash> npm install --global citeproc-cite-service
+```
+
+In this case, the tool can be updated with the following
+command:
+
+``` bash
+    bash> npm update citeproc-cite-service
+```
+
+### Installing from the GitHub repo
+
+The following commands can be used to install the tool from a clone of
+the GitHub repository:
+
 ``` bash
     bash> git clone https://github.com/Juris-M/citeproc-cite-service.git
     bash> cd citeproc-cite-service
     bash> npm install
     bash> npm link
 ```
+
+If tool is installed in this way, version updates can be pulled in with
+the following commands, issued within the repo directory:
+
+``` bash
+    bash> git pull
+    bash> npm update
+```
+
+## Configuring callbacks
+
+
 For initial testing, copy the file `callbacks-sample.js` to `callbacks.js`:
+
 ```bash
     bash> cp callbacks-sample.js callbacks.js
 ```
+
+The sample callbacks file contains functions that will write synced data
+into a file hierarchy. The functions can be adapted, for example to
+write sync updates directly into a local database.
+
+
+## Initializing the sync directory
+
 Before use, the utility must be initialized in an empty data directory
 with the `--init` option. By default, this is the directory in which
 the `zsyncdown` command is executed. To specify a different data
@@ -73,6 +119,8 @@ the header can be ignored, they will be stripped before JSON processing):
     "libraryKey": "aBcDeFg7HiJkLmN8oPqRsTu9"
   }
 }
+
+## Syncing
 
 ```
 Once configuration is complete, running the utility will pull all items and their attachments
