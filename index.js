@@ -246,6 +246,14 @@ Runner.prototype.buildSiteItem = function(item) {
         delete item.dateAdded;
         delete item.dateModified;
         var cslItem = zoteroToCsl(item);
+        var relatedItems = [];
+        if (item.relations["dc:relation"]) {
+            relations = item.relations["dc:relation"];
+            if (typeof relations === "string") {
+                relations = [relations];
+            }
+            relatedItems = relations.map(s => s.replace(/^.*\//, ""));
+        }
         if (this.cfg.dataMode === "CSL-M") {
             cslItem = zoteroToJurism({data:item}, cslItem);
         }
@@ -261,6 +269,7 @@ Runner.prototype.buildSiteItem = function(item) {
         citation: this.style.makeCitationCluster([{"id":itemKey}]),
         country: country,
         tags: item.tags,
+        relatedItems: relatedItems,
         cslItem: cslItem
     }
 }
