@@ -69,6 +69,18 @@ Sys.prototype.getAbbreviation = function(dummyListNameVar, obj, jurisdiction, ca
             break;
         }
     }
+    if (!haveHit && category === "place" && (key.length === 2 || key.indexOf(":") > -1)) {
+        for (var i = 0, ilen = jurisdictions.length; i < ilen; i += 1) {
+            var myjurisdiction = jurisdictions[i];
+            var upperKey = key.toUpperCase();
+            if (this.abbrevs[myjurisdiction] && this.abbrevs[myjurisdiction][category] && this.abbrevs[myjurisdiction][category][upperKey]) {
+                obj[myjurisdiction][category][key] = this.abbrevs[myjurisdiction][category][upperKey];
+                jurisdiction = myjurisdiction;
+                haveHit = true;
+                break;
+            }
+        }
+    }
     return jurisdiction;
 };
 
