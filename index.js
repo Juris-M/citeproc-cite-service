@@ -216,8 +216,8 @@ Runner.prototype.getUpdateSpec = function(newVersions) {
     return ret;
 }
 
-Runner.prototype.extractTag = function(arr, prefix) {
-    var ret = 'UNKNOWN';
+Runner.prototype.extractTag = function(arr, prefix, defaultValue) {
+    var ret = defaultValue;
     try {
         if (prefix.slice(-1) !== ":") {
             throw new Error("Invalid prefix spec: must end in a colon (:)");
@@ -232,6 +232,14 @@ Runner.prototype.extractTag = function(arr, prefix) {
         }
     } catch (e) {
         handleError(e);
+    }
+    return ret;
+}
+
+Runner.prototype.extractCountry = function(jurisdiction) {
+    var ret = "";
+    if (jurisdiction) {
+        ret = jurisdiction.split(":")[0].toUpperCase();
     }
     return ret;
 }
@@ -260,7 +268,7 @@ Runner.prototype.buildSiteItem = function(item) {
         cslItem.id = itemKey;
         this.style.sys.items = JSON.parse("{\"" + itemKey + "\": " + JSON.stringify(cslItem) + "}");
         this.style.updateItems([itemKey]);
-        var country = this.extractTag(item.tags, "cn:")
+        var country = this.extractCountry(cslItem.jurisdiction);
     } catch (e) {
         handleError(e);
     }
@@ -275,15 +283,21 @@ Runner.prototype.buildSiteItem = function(item) {
 }
 
 Runner.prototype.buildSiteAttachment = function(attachment, fulltext){
-    var language = this.extractTag(attachment.tags, "ln:").toLowerCase();
+    var language = this.extractTag(attachment.tags, "LN:", "en");
+    var type = this.extractTag(attachment.tags, "TY:", false);
     this.oldVersions.attachments[attachment.key] = attachment.version;
-    return {
+    var ret = {
         key: attachment.key,
         parentKey: attachment.parentItem,
         language: language,
         filename: attachment.filename,
         fulltext: fulltext
     }
+    if (type) {
+        ret.type = type;
+    }
+    return ret;
+
 }
 
 Runner.prototype.getFulltext = async function(itemKey) {

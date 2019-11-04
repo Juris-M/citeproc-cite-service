@@ -241,9 +241,23 @@ An update under `attachments` has the following top-level elements
   if the key of the attachment item does not change.
 - Zotero collections and saved searches are ignored.
 
-# Update object examples
+# Update objects
 
 ## Items
+
+Item update objects have six keys:
+
+* `key`: The identifier key assigned to the item by `zotero.org`.
+* `citation`: The formatted citation of the item.
+* `country`: The ISO country code of the item, uppercased.
+  This value is derived from the first element of the colon-delimited jurisdiction
+  ID set on `cslItem.jurisdiction`. The value defaults to an empty string.
+* `tags`: An array of objects, each with a single key `tag`, and a single value
+  that is the name of the tag.
+* `relatedItems`: An array of `key` values.
+* `cslItem`: An object with keys and values that follow the
+  [CSL Specification](http://docs.citationstyles.org/en/1.0.1/specification.html)
+  and [CSL-M: extensions to CSL](https://citeproc-js.readthedocs.io/en/latest/csl-m/index.html).
 
 The following is a sample item update object for a legal case:
 
@@ -257,6 +271,7 @@ The following is a sample item update object for a legal case:
       "tag": "Criminal"
     }
   ],
+  "relatedItems": [],
   "cslItem": {
     "type": "legal_case",
     "abstract": "Description of content",
