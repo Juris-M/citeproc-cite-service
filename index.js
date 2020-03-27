@@ -385,7 +385,7 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
         }
         var modSublists = [];
         while (updateSpec.attachments.mod.length) {
-            addSublists.push(updateSpec.attachments.mod.slice(0, transactionSize));
+            modSublists.push(updateSpec.attachments.mod.slice(0, transactionSize));
             updateSpec.attachments.mod = updateSpec.attachments.mod.slice(transactionSize);
         }
         for (var sublist of modSublists) {
