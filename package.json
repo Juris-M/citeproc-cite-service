@@ -1,6 +1,6 @@
 {
     "name": "citeproc-cite-service",
-    "version": "2.1.15",
+    "version": "2.1.16",
     "description": "A limited read-only sync of items and attachments from a Jurism/Zotero library",
     "main": "index.js",
     "scripts": {},
@@ -30,8 +30,8 @@
     },
     "dependencies": {
         "citeproc": "^2.2.33",
-        "citeproc-abbrevs": "^1.1.11",
-        "citeproc-juris-modules": "^1.0.9",
+        "citeproc-abbrevs": "^1.1.12",
+        "citeproc-juris-modules": "^1.0.10",
         "citeproc-locales": ">=1.0.2",
         "getopts": "^2.2.5",
         "regenerator-runtime": "^0.13.5",
