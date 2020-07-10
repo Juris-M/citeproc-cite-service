@@ -451,6 +451,7 @@ const optParams = {
         i : "init",
         f: "files-update",
         d: "data-dir",
+	v: "version",
         h: "help"
     },
     string: ["d"],
@@ -469,6 +470,17 @@ const usage = "Usage: " + path.basename(process.argv[1]) + " [options]\n"
       + "    Absolute path to a citeproc-cite-service data directory.\n";
 
 const opts = getopts(process.argv.slice(2), optParams);
+
+
+if (opts.v) {
+  var package = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json")).toString());
+  console.log(package.version);
+  process.exit();
+}
+console.log(`__dirname=${__dirname}`)
+
+process.exit();
+
 
 if (opts.h) {
     console.log(usage);
