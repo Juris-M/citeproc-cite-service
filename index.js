@@ -477,10 +477,6 @@ if (opts.v) {
   console.log(package.version);
   process.exit();
 }
-console.log(`__dirname=${__dirname}`)
-
-process.exit();
-
 
 if (opts.h) {
     console.log(usage);
