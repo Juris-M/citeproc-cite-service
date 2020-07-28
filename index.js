@@ -123,7 +123,7 @@ Runner.prototype.getVersions = async function(uriStub) {
     return {
         library: libraryVersion,
         keys: keyVersions
-    }
+    };
 };
 
 Runner.prototype.callVersions = async function() {
