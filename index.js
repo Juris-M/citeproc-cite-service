@@ -56,7 +56,7 @@ function getConfig(opts, keyCacheJson) {
         fs.copyFileSync(styleCslSourcePath, styleCslTargetPath);
     }
     var keyCacheFile = path.join(cfg.dataPath, keyCacheJson);
-    if (!keyCacheFile || !fs.existsSync(keyCacheFile)) {
+    if (!fs.existsSync(keyCacheFile)) {
         fs.writeFileSync(keyCacheFile, JSON.stringify({library:0,items:{},attachments:{}}, null, 2));
     }
     console.log("zsyncdown: Using persistent cache file at " + keyCacheFile);
