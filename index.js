@@ -285,6 +285,7 @@ Runner.prototype.buildSiteItem = function(item) {
 Runner.prototype.buildSiteAttachment = function(attachment, fulltext){
     var language = this.extractTag(attachment.tags, "LN:", "en");
     var type = this.extractTag(attachment.tags, "TY:", false);
+    var ocr = this.extractTag(attachment.tags, "OCR:", false);
     this.oldVersions.attachments[attachment.key] = attachment.version;
     var ret = {
         key: attachment.key,
@@ -292,9 +293,12 @@ Runner.prototype.buildSiteAttachment = function(attachment, fulltext){
         language: language,
         filename: attachment.filename,
         fulltext: fulltext
-    }
+    };
     if (type) {
         ret.type = type;
+    }
+    if (ocr) {
+        ret.ocr = ocr;
     }
     return ret;
 
