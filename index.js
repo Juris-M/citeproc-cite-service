@@ -137,6 +137,7 @@ Runner.prototype.callVersions = async function() {
         ret.library = versions.library;
         ret.items = versions.keys;
         versions = await this.getVersions("/items?itemType=attachment&format=versions");
+        console.log(`DO! DO ME! ${JSON.stringify(versions.keys)}`);
         ret.attachments = versions.keys;
     } catch (e) {
         handleError(e);
@@ -207,9 +208,13 @@ Runner.prototype.getUpdateSpec = function(newVersions) {
         files: []
     };
     try {
+        console.log(`oldVersions ${JSON.stringify(this.oldVersions.attachments)}`);
+        console.log(`newVersions ${JSON.stringify(newVersions.attachments)}`);
         ret.items = this.versionDeltas(ret.items, this.oldVersions.items, newVersions.items);
         ret.attachments = this.versionDeltas(ret.attachments, this.oldVersions.attachments, newVersions.attachments);
+        console.log(`ret ${JSON.stringify(ret.attachments)}`);
         ret.files = this.attachmentDelta();
+        this.newVersionAttachmentIDs = newVersions.attachments;
     } catch (e) {
         handleError(e);
     }
@@ -307,6 +312,7 @@ Runner.prototype.buildSiteAttachment = function(attachment, fulltext){
 Runner.prototype.getFulltext = async function(itemKey) {
     var uriStub = "/items/" + itemKey +"/fulltext";
     try {
+        console.log(`OOOOH ${uriStub}`);
         res = await this.callAPI(uriStub);
         res = res.text;
         res = JSON.parse(res).content;
@@ -369,12 +375,31 @@ Runner.prototype.doAddUpdateItems = async function(updateSpec) {
 
 Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
     var transactionSize = 25;
+    console.log(`HEY! doAddUpdateAttachments`);
+    //
+    // FIX missing attachments. For each attachment in newVersions,
+    // check if it's (a) missing from updateSpec.attachments, and
+    // (b) missing from dir/files. If (a) & (b),
+    // add its key to updateSpec.attachments.add.
+    //
+
+    var filesDir = path.join(this.cfg.dirs.topDir, "files");
+    for (var attachmentID of Object.keys(this.newVersionAttachmentIDs)) {
+        if (updateSpec.attachments.add.indexOf(attachmentID) === -1) {
+            var attachmentPth = path.join(filesDir, `${attachmentID}.json`);
+            if ( ! fs.existsSync(attachmentPth)) {
+                updateSpec.attachments.add.push(attachmentID);
+            }
+        }
+    }
     try {
         var addSublists = [];
         while (updateSpec.attachments.add.length) {
             addSublists.push(updateSpec.attachments.add.slice(0, transactionSize));
             updateSpec.attachments.add = updateSpec.attachments.add.slice(transactionSize);
         }
+        /*
+        console.log(`HEY AGAIN! ${JSON.stringify(addSublists)}`);
         for (var sublist of addSublists) {
             var attachments = await this.getItems(sublist);
             for (var attachment of attachments) {
@@ -384,9 +409,11 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
                     this.oldVersions.attachments[attachment.key] = 0;
                 }
                 var siteAttachment = this.buildSiteAttachment(attachment, fulltext);
+                console.log(`BOOM-BOOM ${attachment.key}`);
                 await this.callbacks.attachments.add.call(this.cfg, siteAttachment);
             }
         }
+         */
         var modSublists = [];
         while (updateSpec.attachments.mod.length) {
             modSublists.push(updateSpec.attachments.mod.slice(0, transactionSize));
@@ -426,7 +453,7 @@ Runner.prototype.run = async function() {
 
         // Works in sets of 25
         await this.doAddUpdateAttachments(updateSpec);
-        
+
         if (this.cfg.opts.f) {
             await this.callbacks.files.purge.call(this.cfg, this.oldVersions.attachments);
             for (var key in this.oldVersions.attachments) {
