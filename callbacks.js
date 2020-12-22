@@ -60,14 +60,16 @@ var callbacks = {
         }
     },
     files: {
-        purge: async function(keys){
+        purge: async function(newKeys){
             for (var fn of fs.readdirSync(this.dirs.files)) {
-                var fileKey = fn.replace(/\.pdf/, "");
-                if (!keys[fileKey]) {
+                // Delete all unneeded attachment files
+                if (fn.slice(-4) !== ".pdf") continue;
+                var key = fn.slice(0, -4);
+                if (!newKeys[key]) {
                     var filePath = path.join(this.dirs.files, fn);
                     if (fs.existsSync(filePath)) {
                         fs.unlinkSync(filePath);
-                    }
+                    };
                 }
             }
         },

@@ -137,7 +137,6 @@ Runner.prototype.callVersions = async function() {
         ret.library = versions.library;
         ret.items = versions.keys;
         versions = await this.getVersions("/items?itemType=attachment&format=versions");
-        console.log(`DO! DO ME! ${JSON.stringify(versions.keys)}`);
         ret.attachments = versions.keys;
     } catch (e) {
         handleError(e);
@@ -208,13 +207,9 @@ Runner.prototype.getUpdateSpec = function(newVersions) {
         files: []
     };
     try {
-        console.log(`oldVersions ${JSON.stringify(this.oldVersions.attachments)}`);
-        console.log(`newVersions ${JSON.stringify(newVersions.attachments)}`);
         ret.items = this.versionDeltas(ret.items, this.oldVersions.items, newVersions.items);
         ret.attachments = this.versionDeltas(ret.attachments, this.oldVersions.attachments, newVersions.attachments);
-        console.log(`ret ${JSON.stringify(ret.attachments)}`);
         ret.files = this.attachmentDelta();
-        this.newVersionAttachmentIDs = newVersions.attachments;
     } catch (e) {
         handleError(e);
     }
@@ -312,7 +307,6 @@ Runner.prototype.buildSiteAttachment = function(attachment, fulltext){
 Runner.prototype.getFulltext = async function(itemKey) {
     var uriStub = "/items/" + itemKey +"/fulltext";
     try {
-        console.log(`OOOOH ${uriStub}`);
         res = await this.callAPI(uriStub);
         res = res.text;
         res = JSON.parse(res).content;
@@ -375,31 +369,20 @@ Runner.prototype.doAddUpdateItems = async function(updateSpec) {
 
 Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
     var transactionSize = 25;
-    console.log(`HEY! doAddUpdateAttachments`);
     //
     // FIX missing attachments. For each attachment in newVersions,
     // check if it's (a) missing from updateSpec.attachments, and
     // (b) missing from dir/files. If (a) & (b),
     // add its key to updateSpec.attachments.add.
     //
-
+    console.log(`doAddUpdateAttachments`);
     var filesDir = path.join(this.cfg.dirs.topDir, "files");
-    for (var attachmentID of Object.keys(this.newVersionAttachmentIDs)) {
-        if (updateSpec.attachments.add.indexOf(attachmentID) === -1) {
-            var attachmentPth = path.join(filesDir, `${attachmentID}.json`);
-            if ( ! fs.existsSync(attachmentPth)) {
-                updateSpec.attachments.add.push(attachmentID);
-            }
-        }
-    }
     try {
         var addSublists = [];
         while (updateSpec.attachments.add.length) {
             addSublists.push(updateSpec.attachments.add.slice(0, transactionSize));
             updateSpec.attachments.add = updateSpec.attachments.add.slice(transactionSize);
         }
-        /*
-        console.log(`HEY AGAIN! ${JSON.stringify(addSublists)}`);
         for (var sublist of addSublists) {
             var attachments = await this.getItems(sublist);
             for (var attachment of attachments) {
@@ -409,11 +392,9 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
                     this.oldVersions.attachments[attachment.key] = 0;
                 }
                 var siteAttachment = this.buildSiteAttachment(attachment, fulltext);
-                console.log(`BOOM-BOOM ${attachment.key}`);
                 await this.callbacks.attachments.add.call(this.cfg, siteAttachment);
             }
         }
-         */
         var modSublists = [];
         while (updateSpec.attachments.mod.length) {
             modSublists.push(updateSpec.attachments.mod.slice(0, transactionSize));
@@ -431,6 +412,24 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
                 await this.callbacks.attachments.mod.call(this.cfg, siteAttachment);
             }
         }
+        var attachmentsDone = {};
+        for (var attachmentID of updateSpec.attachments.mod) {
+            // Download the file for a modified attachment ID unconditionally if the metadata has changed
+            if (this.newVersions[attachmentID] > this.oldVersions[attachmentID]) {
+                var response = await this.callAPI("/items/" + attachmentID + "/file", true);
+                await this.callbacks.files.add.call(this.cfg, attachmentID, response.body);
+                attachmentsDone[attachmentID] = true;
+            }
+        };
+        for (var attachmentID in this.newVersions.attachments) {
+            if (attachmentsDone[attachmentID]) continue;
+            var attachmentExists = await this.callbacks.files.exists.call(this.cfg, attachmentID);
+            if (!attachmentExists) {
+                var response = await this.callAPI("/items/" + attachmentID + "/file", true);
+                await this.callbacks.files.add.call(this.cfg, attachmentID, response.body);
+            };
+        }
+        await this.callbacks.files.purge.call(this.cfg, this.newVersions.attachments);
     } catch (e) {
         handleError(e);
     }
@@ -440,6 +439,7 @@ Runner.prototype.run = async function() {
     try {
         await this.callbacks.init.call(this.cfg);
         var newVersions = await this.callVersions();
+        this.newVersions = newVersions;
         var updateSpec = await this.getUpdateSpec(newVersions);
         
         // Open a DB transaction if required
@@ -453,18 +453,6 @@ Runner.prototype.run = async function() {
 
         // Works in sets of 25
         await this.doAddUpdateAttachments(updateSpec);
-
-        if (this.cfg.opts.f) {
-            await this.callbacks.files.purge.call(this.cfg, this.oldVersions.attachments);
-            for (var key in this.oldVersions.attachments) {
-                var attachmentExists = await this.callbacks.files.exists.call(this.cfg, key);
-                if (!attachmentExists) {
-                    // get file data
-                    var response = await this.callAPI("/items/" + key + "/file", true);
-                    await this.callbacks.files.add.call(this.cfg, key, response.body);
-                }
-            }
-        }
 
         // Close a DB transaction if required
         await this.callbacks.closeTransaction.call(this.cfg);
@@ -480,13 +468,12 @@ Runner.prototype.run = async function() {
 const optParams = {
     alias: {
         i : "init",
-        f: "files-update",
         d: "data-dir",
 	v: "version",
         h: "help"
     },
     string: ["d"],
-    boolean: ["f", "h", "i"],
+    boolean: ["h", "i"],
     unknown: option => {
         abort("unknown option \"" +option + "\"");
     }
@@ -495,8 +482,6 @@ const optParams = {
 const usage = "Usage: " + path.basename(process.argv[1]) + " [options]\n"
       + "  -i, --init\n"
       + "    Initialize the current directory or --data-dir.\n"
-      + "  -f, --files-update\n"
-      + "    Update attachment files in addition to data.\n"
       + "  -d, --data-dir <dataDirPath>\n"
       + "    Absolute path to a citeproc-cite-service data directory.\n";
 
