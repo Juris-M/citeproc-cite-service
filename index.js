@@ -292,7 +292,8 @@ Runner.prototype.buildSiteAttachment = function(attachment, fulltext){
         parentKey: attachment.parentItem,
         language: language,
         filename: attachment.filename,
-        fulltext: fulltext
+        fulltext: fulltext,
+        note: attachment.note
     };
     if (type) {
         ret.type = type;
