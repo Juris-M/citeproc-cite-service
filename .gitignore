@@ -5,3 +5,9 @@ access.json
 access-*.json
 callbacks.js
 README.org
+README.html
+tmp
+config.json
+court-code-map.json
+court-jurisdiction-code-map.json
+node_modules
