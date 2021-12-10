@@ -1,0 +1,17 @@
+{
+  "name": "make-data",
+  "version": "1.0.0",
+  "description": "Generate Jurism-compatible CSL-JSON import file from CULTEXP CSV data.",
+  "main": "make-data.js",
+  "dependencies": {
+    "markdown-it": "^12.3.0",
+    "csv-parse": "^5.0.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "make-data": "node ./make-data.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Frank Bennett",
+  "license": "ISC"
+}

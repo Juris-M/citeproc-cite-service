@@ -1,0 +1,74 @@
+[
+  [  
+    "Qorti Civili Prim Awla",
+    "qcpa"
+  ],
+  [
+    "Kummissarju għar-Refuġjati",
+    "kgr"
+  ],
+  [
+    "Qorti Civili (Sezzjoni tal-Familja)",
+      "qc",
+      "Sezzjoni tal-Familja",
+      null
+  ],
+  [
+    "Qorti tal-Magistrati (Malta) bhala Qorti ta' Gudikatura Kriminali",
+      "qm",
+      "Malta",
+      "Gudikatura Kriminali"
+  ],
+  [
+    "Qorti tal-Appell",
+    "qa"
+  ],
+  [
+    "Qorti tal-Appell (Kriminali)",
+      "qa",
+      null,
+      "Kriminali"
+  ],
+  [
+      "Qorti Civili Prim Áwla (Gurisdizzjoni Kostituzzjonali)",
+      "qcpa",
+      null,
+      "Gurisdizzjoni Kostituzzjonali"
+  ],
+  [
+    "Bord tal-Appelli dwar ir-Refuġjati",
+    "bar"
+  ],
+  [
+    "Qorti Civili Prim'Awla\n(Gurisdizzjoni Kostituzzjonali)",
+      "qcpa",
+      null,
+      "Gurisdizzjoni Kostituzzjonali"
+  ],
+  [
+    "Tribunal Ghal Talbiet Zghar",
+      "tgtz"
+  ],
+  [
+    "Tribunal Ghall-Investigazzjoni ta' Ingustizzji",
+    "tgii"
+  ],
+  [
+    "Qorti Kostituzzjonali",
+    "qk"
+  ],
+  [
+    "Qorti tal-Magistrati",
+    "qm"
+  ],
+  [
+    "l-Qrati tal-Maġistrati (Rimandanti)",
+      "qm",
+      null,
+      "Rimandanti"
+  ],
+  [
+    "Qorti Civili Prim Awla",
+    "qcpa"
+  ]
+]
