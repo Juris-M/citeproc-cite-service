@@ -8,6 +8,7 @@ README.org
 README.html
 tmp
 config.json
+make-data-config.json
 court-code-map.json
 court-jurisdiction-code-map.json
 node_modules
