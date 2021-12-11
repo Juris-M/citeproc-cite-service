@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const fs = require("fs");
 const path = require("path");
 const csvparse = require("csv-parse");
@@ -12,52 +13,73 @@ const markdown = require('markdown-it')({
  Error handling
 */
 
-function handleErrorFatal(err) {
+function handleError(err) {
     console.log(err.message);
     process.exit(1);
 }
 
-function handleErrorNonFatal(err, key) {
-    console.log(key  + ": " + err.message);
+/*
+ Initial validation
+ */
+const validateDataFile = () => {
+    var filenames = fs.readdirSync(".");
+    var csvOK = false;
+    for (var fn of filenames) {
+        if (fn.match(/data-[-a-zA-Z]+\.csv/)) {
+            if (!csvOK) {
+                csvOK = true;
+            } else {
+                var err = new Error("Multiple data files with name 'data-<country_name>.csv' found in this directory. Aborting.");
+                throw err;
+            }
+        }
+    }
+    if (!csvOK) {
+        var err = new Error("No data file with name 'data-<country_name>.csv' found. Aborting.");
+        throw err;
+    }
 }
-
+    
 /*
  Setup config
  */
-var configPath = path.join(__dirname, "config.json");
-if (!fs.existsSync(configPath)) {
-    fs.writeFileSync("./config.json", JSON.stringify({
-        "jurisdictionCode": "xx",
-        "jurisdictionName": "Laputa",
-        "jurisdictionDescPath": "/path/to/legal-resource-registry-repo"
-    }, null, 2));
-};
+const setupConfig = () => {
+    var config = {};
+    var configPath = path.join(".", "make-data-config.json");
+    if (!fs.existsSync(configPath)) {
+        fs.writeFileSync(configPath, JSON.stringify({
+            "jurisdictionCode": "xx",
+            "jurisdictionName": "Laputa",
+            "jurisdictionDescPath": "/path/to/legal-resource-registry-repo"
+        }, null, 2));
+    };
 
-// Validate variables in config and set
-var configs = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json")));
+    // Validate variables in config and set
+    var configSource = JSON.parse(fs.readFileSync(configPath));
 
-var defaultJurisdiction = configs.jurisdictionCode;
-var fileNameStub = `data-${configs.jurisdictionName.replace(/\s/g, "-").toLowerCase()}`;
-jurisdictionDescMapPath = `${configs.jurisdictionDescPath.replace(/\/$/, "")}/juris-${defaultJurisdiction}-desc.json`;
+    config.defaultJurisdiction = configSourece.jurisdictionCode;
+    config.fileNameStub = `data-${configSource.jurisdictionName.replace(/\s/g, "-").toLowerCase()}`;
+    config.jurisdictionDescMapPath = `${configSource.jurisdictionDescPath.replace(/\/$/, "")}/juris-${config.defaultJurisdiction}-desc.json`;
 
-if (!fs.existsSync(jurisdictionDescMapPath)) {
-    var err = new Error(`ERROR: path '${jurisdictionDescMapPath}' set from values in config.json does not exist.\n       Edit config.json and try again.`);
-    handleErrorFatal(err);
+    if (!fs.existsSync(config.jurisdictionDescMapPath)) {
+        var err = new Error(`ERROR: path '${config.jurisdictionDescMapPath}' set from values in make-data-config.json does not exist.\n       Edit make-data-config.json and try again.`);
+        throw err;
+    }
+
+    // Static path names
+    config.courtJurisdictionMapFilePath = path.join(".", "court-jurisdiction-code-map.json");
+    config.createCourtJurisdictionMapFile = false;
+    
+    config.courtHintFilePath = path.join(".", "court-code-map.json");
+    config.createCourtHintFile = false;
+
+    console.log(`Running with data file stub: ${config.fileNameStub}`);
+    return config;
 }
 
-console.log(`Running with data file stub: ${fileNameStub}`);
-
-
-// Static path names
-var courtJurisdictionMapFilePath = path.join(__dirname, "court-jurisdiction-code-map.json");
-var createCourtJurisdictionMapFile = false;
-
-var courtHintFilePath = path.join(__dirname, "court-code-map.json");
-var createCourtHintFile = false;
 
 // Containers for runtime data pools
 var unrecognizedJurisdictions = [];
-var jurisObj = {};
 
 /*
  Data and functions for sniffing and setting column positions
@@ -218,11 +240,12 @@ function loadLine(record) {
     return ret;
 }
 
-// console.log(`Reading jurisdictionDescMapPath: ${jurisdictionDescMapPath}`);
-jurisObj[defaultJurisdiction] = JSON.parse(fs.readFileSync(jurisdictionDescMapPath).toString());
-
-console.log(csvparse);
-
+const setJurisObj = (config) => {
+    // console.log(`Reading jurisdictionDescMapPath: ${config.jurisdictionDescMapPath}`);
+    config.jurisObj = {};
+    config.jurisObj[config.defaultJurisdiction] = JSON.parse(fs.readFileSync(config.jurisdictionDescMapPath).toString());
+}
+    
 var parser;
 if (csvparse.parse) {
     parser = csvparse.parse();
@@ -231,7 +254,7 @@ if (csvparse.parse) {
 }
 
 const filesPath = (filename) => {
-    var pth = path.join(__dirname, "files");
+    var pth = path.join(".", "files");
     if (filename) {
         return path.join(pth, filename);
     } else {
@@ -242,34 +265,36 @@ const filesPath = (filename) => {
 // Attempt to read human-readable form of Jurism jurisdiction entries
 // Map is generated from Jurism juris-desc file.
 // No custom map is used by this function
-var jurisdictionNameMap = {}
-for (var key in jurisObj[defaultJurisdiction].jurisdictions) {
-    // Split key
-    var lst = key.split(":");
-    // Look up name of each key element
-    // Build an array
-    // Join with |
-    var accKey = [];
-    var accName = [];
-    for (var i=0,ilen=lst.length;i<ilen;i++) {
-        elem = lst[i];
-        accKey.push(elem);
-        var subkey = accKey.join(":");
-        var name = jurisObj[defaultJurisdiction].jurisdictions[subkey].name;
-        accName.push(name);
-        if (i === 0) {
-            accName.push(elem.toUpperCase());
+const setJurisdictionNameMap = (config) => {
+    config.jurisdictionNameMap = {};
+    for (var key in config.jurisObj[config.defaultJurisdiction].jurisdictions) {
+        // Split key
+        var lst = key.split(":");
+        // Look up name of each key element
+        // Build an array
+        // Join with |
+        var accKey = [];
+        var accName = [];
+        for (var i=0,ilen=lst.length;i<ilen;i++) {
+            elem = lst[i];
+            accKey.push(elem);
+            var subkey = accKey.join(":");
+            var name = config.jurisObj[config.defaultJurisdiction].jurisdictions[subkey].name;
+            accName.push(name);
+            if (i === 0) {
+                accName.push(elem.toUpperCase());
+            }
         }
+        if (accName.length === 2) {
+            config.jurisdictionNameMap[accName[0]] = subkey;
+        }
+        config.jurisdictionNameMap[accName.join("|")] = subkey;
     }
-    if (accName.length === 2) {
-        jurisdictionNameMap[accName[0]] = subkey;
-    }
-    jurisdictionNameMap[accName.join("|")] = subkey;
 }
-const getJurisdiction = (jurisdiction) => {
-    if (!jurisObj[defaultJurisdiction].jurisdictions[jurisdiction]) {
-        if (jurisdictionNameMap[jurisdiction]) {
-            jurisdiction = jurisdictionNameMap[jurisdiction];
+const getJurisdiction = (config, jurisdiction) => {
+    if (!config.jurisObj[config.defaultJurisdiction].jurisdictions[jurisdiction]) {
+        if (config.jurisdictionNameMap[jurisdiction]) {
+            jurisdiction = config.jurisdictionNameMap[jurisdiction];
         } else {
             // Reporting out of this list has been removed, but we still collect the data just in case it might be useful to restore reporting in future.
             if (unrecognizedJurisdictions.indexOf(jurisdiction) === -1) {
@@ -283,37 +308,42 @@ const getJurisdiction = (jurisdiction) => {
 // Attempt to read human-readable form of Jurism court entries
 // Map is generated from Jurism juris-desc file.
 // Base map is supplemented by a custom file containing match hints
-
-var courtCodeMap = {};
-for (var key in jurisObj[defaultJurisdiction].courts) {
-    courtCodeMap[jurisObj[defaultJurisdiction].courts[key].name] = key;
-}
-
-if (!fs.existsSync(courtHintFilePath)) {
-    fs.writeFileSync(courtHintFilePath, "[]");
-    createCourtHintFile = true;
-}
-
-// console.log(`Reading courtHintFilePath: ${courtHintFilePath}`);
-var courtHintMap = JSON.parse(fs.readFileSync(courtHintFilePath).toString());
-// Put longest matches first, to avoid false positives
-courtHintMap.sort((a,b) => {
-    if (a[0].length < b[0].length) {
-        return 1;
-    } else if (a[0].length > b[0].length) {
-        return -1;
-    } else {
-        return 0;
+const setCourtCodeMap = (config) => {
+    config.courtCodeMap = {};
+    for (var key in config.jurisObj[config.defaultJurisdiction].courts) {
+        config.courtCodeMap[config.jurisObj[config.defaultJurisdiction].courts[key].name] = key;
     }
-});
-if (courtHintMap.length === 0) {
-    var courtHintMapEmpty = true;
-} else {
-    var courtHintMapEmpty = false;
 }
-var courtNameMap = {};
-for (var key in jurisObj[defaultJurisdiction].courts) {
-    courtNameMap[jurisObj[defaultJurisdiction].courts[key].name] = key;
+
+const setCourtHintMap = (config) => {
+    if (!fs.existsSync(config.courtHintFilePath)) {
+        fs.writeFileSync(config.courtHintFilePath, "[]");
+        config.createCourtHintFile = true;
+    }
+    // console.log(`Reading courtHintFilePath: ${courtHintFilePath}`);
+    var courtHintMap = JSON.parse(fs.readFileSync(courtHintFilePath).toString());
+    // Put longest matches first, to avoid false positives
+    config.courtHintMap.sort((a,b) => {
+        if (a[0].length < b[0].length) {
+            return 1;
+        } else if (a[0].length > b[0].length) {
+            return -1;
+        } else {
+            return 0;
+        }
+    });
+    if (config.courtHintMap.length === 0) {
+        config.courtHintMapEmpty = true;
+    } else {
+        config.courtHintMapEmpty = false;
+    }
+}
+
+const setCourtNameMap = (config) => {
+    config.courtNameMap = {};
+    for (var key in config.jurisObj[config.defaultJurisdiction].courts) {
+        config.courtNameMap[config.jurisObj[config.defaultJurisdiction].courts[key].name] = key;
+    }
 }
 
 const setCourt = (line) => {
@@ -337,19 +367,21 @@ const setCourt = (line) => {
             }
         }
     }
-    if (courtHintMapEmpty && !jurisObj[defaultJurisdiction].courts[line.court]) {
+    if (courtHintMapEmpty && !config.jurisObj[config.defaultJurisdiction].courts[line.court]) {
         if (courtHintMap.map(o => o[0]).indexOf(str) === -1) {
             courtHintMap.push([str, "[COURT CODE]"]);
         }
     }
 }
 
-if (!fs.existsSync(courtJurisdictionMapFilePath)) {
-    fs.writeFileSync(courtJurisdictionMapFilePath, "{}");
-    createCourtJurisdictionMapFile = true;
+const setCourtJurisdictionCodeMap = (config) => {
+    if (!fs.existsSync(config.courtJurisdictionMapFilePath)) {
+        fs.writeFileSync(config.courtJurisdictionMapFilePath, "{}");
+        config.createCourtJurisdictionMapFile = true;
+    }
+    // console.log(`Reading jurisdictionMapFilePath: ${courtJurisdictionMapFilePath}`);
+    config.courtJurisdictionCodeMap = JSON.parse(fs.readFileSync(courtJurisdictionMapFilePath).toString());
 }
-// console.log(`Reading jurisdictionMapFilePath: ${courtJurisdictionMapFilePath}`);
-var courtJurisdictionCodeMap = JSON.parse(fs.readFileSync(courtJurisdictionMapFilePath).toString());
 
 function getDate(str) {
     if (str.trim() === "undated") {
@@ -432,14 +464,14 @@ function addAttachment(line) {
             path: filesPath(fn),
             title: fn,
             note: note,
-            tags: [`LN:${defaultJurisdiction}`, "TY:judgment"]
+            tags: [`LN:${config.defaultJurisdiction}`, "TY:judgment"]
         });
     } else if (suffix.slice(0, 2) === "ER") {
         attachments.push({
             path: filesPath(fn),
             title: fn,
             note: note,
-            tags: [`LN:${defaultJurisdiction}`, "TY:report"]
+            tags: [`LN:${config.defaultJurisdiction}`, "TY:report"]
         });
     } else {
         console.log(`  Oops ${suffix}`);
@@ -492,14 +524,14 @@ function composeItem(line) {
     if (line.jurisdiction) {
         item["jurisdiction"] = line.jurisdiction;
     } else {
-        item["jurisdiction"] = defaultJurisdiction;
+        item["jurisdiction"] = config.defaultJurisdiction;
     }
     item["abstract"] = getAbstract(line.summary);
     // item.references = `appeal from ${record[6]}`;
-    item["language"] = `${defaultJurisdiction}`;
+    item["language"] = `${config.defaultJurisdiction}`;
     // item["number"] = number;
     var info = addAttachment(line);
-    info.tags.push(`cn:${defaultJurisdiction.toUpperCase()}`);
+    info.tags.push(`cn:${config.defaultJurisdiction.toUpperCase()}`);
     item["attachments"] = info.attachments;
     item["tags"] = getTags(line, info.tags);
     return item;
@@ -538,25 +570,32 @@ function getSpreadsheetArrays(path_to_csv) {
 
 var deletes = [];
 
-(async function() {
+async function run() {
+    validateDataFile();
+    var config = setupConfig();
+    setJurisObj(config);
+    setJurisdictionNameMap(config);
+    setCourtCodeMap(config);
+    setCourtNameMap(config);
+    setCourtJurisdictionCodeMap(config);
     var court;
     try {
         var acc = {};
         var ret = [];
         var jurisdictions = {};
-        var arrays = await getSpreadsheetArrays(fileNameStub + ".csv");
+        var arrays = await getSpreadsheetArrays(config.fileNameStub + ".csv");
         //arrays = arrays.slice(1);
         //var arrays = arrays.slice(1);
         for (var record of arrays) {
             
             var line = loadLine(record);
             // Attempt to normalize jurisdiction code
-            line.jurisdiction = getJurisdiction(line.jurisdiction);
+            line.jurisdiction = getJurisdiction(config, line.jurisdiction);
 
             // Attempt to normalize court code
             setCourt(line);
 
-            var info = courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`];
+            var info = config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`];
             if (info) {
                 line.court = info.court;
                 line.jurisdiction = info.jurisdiction;
@@ -568,12 +607,12 @@ var deletes = [];
             var topJurisdiction = line.jurisdiction.split(":")[0];
                 
             if (!jurisObj[topJurisdiction]) {
-                var pth = jurisdictionDescMapPath.replace(`juris-${defaultJurisdiction}`, `juris-${topJurisdiction}`);
+                var pth = config.jurisdictionDescMapPath.replace(`juris-${config.defaultJurisdiction}`, `juris-${topJurisdiction}`);
                 if (fs.existsSync(pth)) {
                     // console.log(`Reading pth: ${pth}`);
                     jurisObj[topJurisdiction] = JSON.parse(fs.readFileSync(pth).toString());
                 } else {
-                    topJurisdiction = defaultJurisdiction;
+                    topJurisdiction = config.defaultJurisdiction;
                 }
             }
             var jurisdictionInfo = jurisObj[topJurisdiction].jurisdictions[line.jurisdiction];
@@ -593,7 +632,7 @@ var deletes = [];
                     console.log(`    Adjust jurisdiction and court code values in ${courtJurisdictionMapFilePath}`);
                 } else {
                     console.log(`WARNING: Invalid entry at ${line.court}::${line.jurisdiction}`);
-                    console.log(`    Check jurisdiction and court codes against data in ${jurisdictionDescMapPath}`);
+                    console.log(`    Check jurisdiction and court codes against data in ${config.jurisdictionDescMapPath}`);
                 }
             }
             
@@ -618,20 +657,20 @@ var deletes = [];
                     //console.log(`   len: ${acc[rootID].attachments.length}`);
                 }
             } catch (e) {
-                handleErrorFatal(e, line.id);
+                throw e;
             }
         }
         for (var id in acc) {
             ret.push(acc[id]);
         }
 
-        if (createCourtJurisdictionMapFile) {
+        if (config.createCourtJurisdictionMapFile) {
             fs.writeFileSync(courtJurisdictionMapFilePath, JSON.stringify(courtJurisdictionCodeMap, null, 2));
         }
-        if (createCourtHintFile) {
+        if (config.createCourtHintFile) {
             fs.writeFileSync(courtHintFilePath, JSON.stringify(courtHintMap, null, 2));
         }
-        fs.writeFileSync(path.join(__dirname, "import-me.json"), JSON.stringify(ret, null, 2));
+        fs.writeFileSync(path.join(".", "import-me.json"), JSON.stringify(ret, null, 2));
         
         checkColMap();
 
@@ -640,6 +679,17 @@ var deletes = [];
          */
         
     } catch (e) {
-        handleErrorFatal(e);
+        throw e;
     }
-})();
+};
+
+// If run as a script
+(async function() {
+    try {
+        await run();
+    } catch (e) {
+        handleError(e);
+    }
+}());
+
+// Otherwise export "run" function
