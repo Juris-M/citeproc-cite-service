@@ -50,12 +50,12 @@ $> git clone https://github.com/Juris-M/legal-resource-registry.git
 Setting up a jurisdiction
 -------------------------
 
-To process a jurisdiction, create an empty directory and place the spreadsheet in it, saving the case listing in CSV format. Then enter the directory and run the command `make-data`:
+To process a jurisdiction, create an empty directory and place the spreadsheet in it, saving the case listing in CSV format. Also (important!) copy all of the PDF attachment files for the jurisdiction into a single subdirectory named `files`. Then enter the directory and run the command `make-data`:
 
 ``` example
 $> cd malta
 $> ls
-data-malta.csv  data-malta.xlsx
+data-malta.csv  data-malta.xlsx  files
 $> make-data
 ```
 
@@ -69,7 +69,7 @@ This will throw an error and create a configuration file `make-data-config.json`
 }
 ```
 
-Edit the configuration file to reflect the target jurisdiction and the absolute path to the `src` subdirectory of the Legal Resource Registry. In this case, we are working on Malta:
+Edit the configuration file to reflect the target jurisdiction and the absolute path to the `src` subdirectory of the LRR. In this case, we are working on Malta:
 
 ``` example
 {
@@ -89,7 +89,7 @@ With the configuration file in place, run `make-data` again. The script will iss
 3.  Court division (optional)
 4.  Case type (optional)
 
-Open the relevant jurisdiction file in the Legal Resource Registry for reference (in this case, the file for Malta is `juris-mt-desc.json`). The `courts` section of the file contains the court codes recognized for the jurisdiction.
+Open the relevant jurisdiction file in the LRR for reference (in this case, the file for Malta is `juris-mt-desc.json`). The `courts` section of the file contains the court codes recognized for the jurisdiction.
 
 Edit each entry in `court-code-map.json`, replacing the second element is each list with the appropriate court code. For example...
 
@@ -148,18 +148,61 @@ Where the court description contains a note of the case type, add that as a four
   ]
 ```
 
-If courts are described in the spreadsheet that cannot be found in the Legal Resource Registry record of the jurisdiction, contact the Jurism data manager (Frank Bennett `<biercenator@gmail.com>`) to request an extension to the jurisdiction data.
+If courts are described in the spreadsheet that cannot be found in the LRR record of the jurisdiction, contact the Jurism data manager (Frank Bennett `<biercenator@gmail.com>`) to request an extension to the jurisdiction data.
 
 Preparing a court jurisdiction map
 ----------------------------------
 
-In addition to the `court-code-map.json` file, the `make-data` script generates a file `court-jurisdiction-code.json`. Both files are used by the script to generate the final data for import into Jurism, and court codes set in the latter depend on the (edited) mapping lists in the former. It is therefore necessary to regenerate `court-jurisdiction-map.json` after completing edits to `court-code-map.json`.
+In addition to the `court-code-map.json` file, the `make-data` script generates a file `court-jurisdiction-code.json`. Both files are used by the script to generate the final data for import into Jurism, and court codes set in the latter depend on the (edited) mapping lists in the former. It is therefore necessary to regenerate `court-jurisdiction-map.json` after completing edits to `court-code-map.json`. To regenerate the file, remove it from the directory and rerun `make-data`.
+
+``` example
+$> rm court-jurisdiction-map.json
+$> make-data
+```
+
+The script will again issue warnings, due to mismatches between court codes and their associated jurisdictions. Open the regenerated file to make any necessary edits.
+
+In the case of Malta, there is only one warning, and one entry in `court-jurisdiction-code-map.json`, due to an unrecognized jurisdiction "Gozo":
+
+``` example
+{
+  "qc::Gozo": {
+    "court": "qc",
+    "jurisdiction": "Gozo"
+  }
+}
+```
+
+Leaving the `qc:Gozo` key untouched, and referring to the LRR, we enter the correct jurisdiction code for this island of Malta:
+
+``` example
+{
+  "qc::Gozo": {
+    "court": "qc",
+    "jurisdiction": "mt:gozo"
+  }
+}
+```
+
+Note that the court code and jurisdiction code must be valid partners: in the LRR, the court code must appear in the `courts` array under the given jurisdiction code. For example:
+
+``` example
+"mt:gozo": {
+    "name": "Gozo",
+    "courts": {
+        "qc": {}
+    }
+}
+```
+
+If a valid jurisdiction for the given court cannot be found in the LRR, or if the jurisdiction itself cannot be found there, contact the Jurism data manager (Frank Bennett `<biercenator@gmail.com>`) to have the necessary changes made to the LRR jurisdiction records.
 
 Uploading data for a jurisdiction
 ---------------------------------
 
-Making changes to jurisdiction data
------------------------------------
+Once the above steps have been completed, the `make-data` script will run without warnings. It will generate a file `import-me.json`, which is a valid CSL-JSON import object reflecting all of the entries in the spreadsheet.
+
+The upload data for the jurisdiction, import this file into a Jurism client in the usual way, and sync the library to the Zotero servers.
 
 Footnotes
 =========
