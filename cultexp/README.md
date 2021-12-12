@@ -116,11 +116,6 @@ Where the court description includes a court division, add a third element to th
     "Qorti Civili (Sezzjoni tal-Familja)",
     "Qorti Civili (Sezzjoni tal-Familja)"
   ]
-#+BEGIN_EXAMPLE
-  [
-    "Qorti Civili Prim Awla",
-    "Qorti Civili Prim Awla"
-  ]
 ```
 
 ...becomes...
