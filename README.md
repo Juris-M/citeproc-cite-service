@@ -5,7 +5,7 @@ files from which a website containing citable documents can be
 maintained. The files are constructed from items and attachments
 stored in a Zotero group library maintained by Jurism clients, and
 item records include a citation generated using the CSL-M extensions
-to Jurism. Juris-M/citeproc-ci-service was developed by by Frank Bennett and is a secondary output of EURO-EXPERT (n.161814) funded by the European Research Council.
+to Jurism. Juris-M/citeproc-cite-service was developed by by Frank Bennett and is a secondary output of EURO-EXPERT (n.161814) funded by the European Research Council.
 
 # System Requirements
 
