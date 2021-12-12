@@ -53,7 +53,9 @@ This will throw an error and create a configuration file `make-data-config.json`
 
 ``` example
 {
-  Hello
+  "jurisdictionCode": "xx",
+  "jurisdictionName": "Laputa",
+  "jurisdictionDescPath": "/path/to/legal-resource-registry-repo"
 }
 ```
 
