@@ -40,6 +40,23 @@ $> npm link
 Setting up a jurisdiction
 -------------------------
 
+To process a jurisdiction, create an empty directory and place the spreadsheet in it, saving the case listing in CSV format. Then enter the directory and run the command `make-data`:
+
+``` example
+$> cd malta
+$> ls
+data-malta.csv  data-malta.xlsx
+$> make-data
+```
+
+This will throw an error and create a configuration file `make-data-config.json` with the following content:
+
+``` example
+{
+  Hello
+}
+```
+
 Preparing a court map
 ---------------------
 
