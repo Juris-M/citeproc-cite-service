@@ -37,6 +37,16 @@ $> npm install
 $> npm link
 ```
 
+Installing the Legal Resource Registry
+--------------------------------------
+
+The `make-data` conversion script relies on the Legal Resource Registry (LRR) to obtain court and jurisdiction codes. We will clone the LRR into a sibling directory to `citeproc-cite-service` above:
+
+``` example
+$> cd ../..
+$> git clone https://github.com/Juris-M/legal-resource-registry.git
+```
+
 Setting up a jurisdiction
 -------------------------
 
@@ -59,11 +69,96 @@ This will throw an error and create a configuration file `make-data-config.json`
 }
 ```
 
+Edit the configuration file to reflect the target jurisdiction and the absolute path to the `src` subdirectory of the Legal Resource Registry. In this case, we are working on Malta:
+
+``` example
+{
+  "jurisdictionCode": "mt",
+  "jurisdictionName": "Malta",
+  "jurisdictionDescPath": "/my/path/to/legal-resource-registry/src"
+}
+```
+
 Preparing a court map
 ---------------------
 
-Preparing a court-jurisdiction map
+With the configuration file in place, run `make-data` again. The script will issue a string of warnings and generate a file `court-code-map.json`. This file will be read by `make-data` to map court names written into the spreadsheet to their respective court codes, optionally also setting a court division and case type, where that information is expressed in the spreadsheet entries. The file is formatted as a series of lists, ordered as follows:
+
+1.  Court description (from the spreadsheet)
+2.  Court code (intially set to the court description)
+3.  Court division (optional)
+4.  Case type (optional)
+
+Open the relevant jurisdiction file in the Legal Resource Registry for reference (in this case, the file for Malta is `juris-mt-desc.json`). The `courts` section of the file contains the court codes recognized for the jurisdiction.
+
+Edit each entry in `court-code-map.json`, replacing the second element is each list with the appropriate court code. For example...
+
+``` example
+  [
+    "Qorti Civili Prim Awla",
+    "Qorti Civili Prim Awla"
+  ]
+```
+
+...becomes...
+
+``` example
+  [
+    "Qorti Civili Prim Awla",
+    "qcpa"
+  ]
+```
+
+Where the court description includes a court division, add a third element to the list. For example...
+
+``` example
+  [
+    "Qorti Civili (Sezzjoni tal-Familja)",
+    "Qorti Civili (Sezzjoni tal-Familja)"
+  ]
+#+BEGIN_EXAMPLE
+  [
+    "Qorti Civili Prim Awla",
+    "Qorti Civili Prim Awla"
+  ]
+```
+
+...becomes...
+
+``` example
+  [
+    "Qorti Civili (Sezzjoni tal-Familja)",
+    "qc",
+    "Sezzjoni tal-Familja"
+  ]
+```
+
+Where the court description contains a note of the case type, add that as a fourth element in the list. In this case, if no court division is indicated, set `null` in the third position. This the following example...
+
+``` example
+  [
+    "Qorti Civili Prim Áwla (Gurisdizzjoni Kostituzzjonali)",
+    "Qorti Civili Prim Áwla (Gurisdizzjoni Kostituzzjonali)"
+  ]
+```
+
+...becomes...
+
+``` example
+  [
+      "Qorti Civili Prim Áwla (Gurisdizzjoni Kostituzzjonali)",
+      "qcpa",
+      null,
+      "Gurisdizzjoni Kostituzzjonali"
+  ]
+```
+
+If courts are described in the spreadsheet that cannot be found in the Legal Resource Registry record of the jurisdiction, contact the Jurism data manager (Frank Bennett `<biercenator@gmail.com>`) to request an extension to the jurisdiction data.
+
+Preparing a court jurisdiction map
 ----------------------------------
+
+In addition to the `court-code-map.json` file, the `make-data` script generates a file `court-jurisdiction-code.json`. Both files are used by the script to generate the final data for import into Jurism, and court codes set in the latter depend on the (edited) mapping lists in the former. It is therefore necessary to regenerate `court-jurisdiction-map.json` after completing edits to `court-code-map.json`.
 
 Uploading data for a jurisdiction
 ---------------------------------
