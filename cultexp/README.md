@@ -148,7 +148,7 @@ Where the court description contains a note of the case type, add that as a four
   ]
 ```
 
-If courts are described in the spreadsheet that cannot be found in the LRR record of the jurisdiction, contact the Jurism data manager (Frank Bennett `<biercenator@gmail.com>`) to request an extension to the jurisdiction data.
+If courts are described in the spreadsheet that cannot be found in the LRR record of the jurisdiction, contact the Jurism data manager (Frank Bennett) to request an extension to the jurisdiction data.
 
 Preparing a court jurisdiction map
 ----------------------------------
@@ -195,14 +195,19 @@ Note that the court code and jurisdiction code must be valid partners: in the LR
 }
 ```
 
-If a valid jurisdiction for the given court cannot be found in the LRR, or if the jurisdiction itself cannot be found there, contact the Jurism data manager (Frank Bennett `<biercenator@gmail.com>`) to have the necessary changes made to the LRR jurisdiction records.
+If a valid jurisdiction for the given court cannot be found in the LRR, or if the jurisdiction itself cannot be found there, contact the Jurism data manager (Frank Bennett) to have the necessary changes made to the LRR jurisdiction records.
 
 Uploading data for a jurisdiction
 ---------------------------------
 
 Once the above steps have been completed, the `make-data` script will run without warnings. It will generate a file `import-me.json`, which is a valid CSL-JSON import object reflecting all of the entries in the spreadsheet.
 
-The upload data for the jurisdiction, import this file into a Jurism client in the usual way, and sync the library to the Zotero servers.
+To upload data for the jurisdiction, import this file into a Jurism client in the usual way, and sync the library to the Zotero servers.
+
+Final preparation
+-----------------
+
+Before data for a jurisdiction is pulled to the front end for the first time, check with the Jurism data manager (Frank Bennett) to be sure that the citation format for the target jurisdiction has been defined.
 
 Footnotes
 =========
