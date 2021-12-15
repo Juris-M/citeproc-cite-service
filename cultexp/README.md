@@ -50,7 +50,11 @@ $> git clone https://github.com/Juris-M/legal-resource-registry.git
 Setting up a jurisdiction
 -------------------------
 
-To process a jurisdiction, create an empty directory and place the spreadsheet in it, saving the case listing in CSV format. Also (important!) copy all of the PDF attachment files for the jurisdiction into a single subdirectory named `files`. Then enter the directory and run the command `make-data`:
+To process a jurisdiction, create an empty directory and place the spreadsheet in it, saving the case listing in CSV format. Also (important!) copy all of the PDF attachment files for the jurisdiction into a single subdirectory named `files`.
+
+**A note on dates:** When saving from Excel in CSV format, dates should be set to a numeric form, as "YYYY-MM-DD." With other date formats, the `make-data` script will throw errors and warnings.
+
+Enter the directory and run the command `make-data`:
 
 ``` example
 $> cd malta
