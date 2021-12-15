@@ -393,45 +393,57 @@ const setCourtJurisdictionCodeMap = (config) => {
     config.courtJurisdictionCodeMap = JSON.parse(fs.readFileSync(config.courtJurisdictionMapFilePath).toString());
 }
 
-function getDate(str) {
-    if (str.trim() === "undated") {
-        str = "";
-    }
-    if (!str) {
+function getDate(item, str) {
+    if (!str || ["undated", "no date"].indexOf(str.toString().toLowerCase()) > -1) {
         return null;
     }
     var ret = [];
-    var lst = str.split(/[-\/\.]/);
-    lst.reverse();
-    
-    var day = lst[2];
-    if (day) {
-        day = parseInt(day, 10);
+
+    var lst = str.toString().split(/[-\/\.\,]/);
+    var validDate = true;
+    if (lst.length > 3) {
+        validDate = false;
     }
-    var month = lst[1];
-    if (month) {
-        month = parseInt(month, 10);
-    }
-    if (month > 12) {
-        var oldday = day;
-        day = month;
-        month = oldday;
-    }
-    var year = lst[0];
-    if (year) {
-        ret.push(year);
-        if (month) {
-            ret.push(month);
-            if (day) {
-                ret.push(day);
-            }
+    for (var i=0,ilen=lst.length;i<ilen;i++) {
+        var elem = lst[i];
+        if (!elem.match(/[0-9]+/)) {
+            validDate = false;
         }
-    } else {
-        throw new Error("Missing year in date element in " + str);
+    }
+    if (!validDate) {
+        var err = new Error(`invalid date "${str}" at ${item["call-number"]}`);
+        throw err;
+    }
+    // Sniff pattern
+    var dateType;
+    for (var i=0,ilen=2;i<ilen;i++) {
+        if (i === 1) {
+            lst.reverse();
+        }
+        dateType = i;
+        if (lst[0].match(/[0-9]{4}/)) {
+            break;
+        }
+    }
+    if (lst[0].length !== 4 || parseInt(lst[1], 10) > 12 || parseInt(lst[2], 10) > 31) {
+        var err = new Error(`impossible date "${str}" at ${item["call-number"]}`);
+        throw err;
+    }
+    if (dateType === 1) {
+        if (parseInt(lst[2]) < 13) {
+            console.log(`WARNING: ambiguous date "${str}" at ${item["call-number"]}`);
+        }
+    }
+    ret.push(lst[0].replace(/^0+/, ""));
+    if (lst[1]) {
+        ret.push(lst[1].replace(/^0+/, ""));
+    }
+    if (lst[2]) {
+        ret.push(lst[2].replace(/^0+/, ""));
     }
     return {
         "date-parts": [ret]
-    }
+    };
 }
 
 function getAbstract(str) {
@@ -524,7 +536,7 @@ function composeItem(config, line) {
     if (line.page) {
         item.page = line.page;
     }
-    var date = getDate(line.date);
+    var date = getDate(item, line.date);
     if (date) {
         item["issued"] = date;
     }
@@ -631,6 +643,9 @@ function run(quiet) {
             }
             
             // Validate court in jurisdiction
+            if (!line.jurisdiction) {
+                line.jurisdiction = config.defaultJurisdiction;
+            }
             var valid = false;
             // Extend jurisdiction descriptions if necessary and if possible
             var topJurisdiction = line.jurisdiction.split(":")[0];
