@@ -32,7 +32,6 @@ afterEach(() => {
  Tests
 */
 
-
 test('Throws error for missing data file', () => {
     expect(() => {
         makeDataRun(true)
@@ -106,3 +105,66 @@ test('Processes without error and creates import-me.json file', () => {
     expect(resultObj).toEqual(expectedObj);
 });
 
+
+test('Processes dates correctly', () => {
+    fs.copyFileSync(filesDir("data-malta-date-formats.csv"), currDir("data-malta.csv"));
+    fs.copyFileSync(filesDir("make-data-config-MALTA.json"), currDir("make-data-config.json"));
+    fs.copyFileSync(filesDir("court-code-map-MALTA.json"), currDir("court-code-map.json"));
+    fs.copyFileSync(filesDir("court-jurisdiction-code-map-MALTA.json"), currDir("court-jurisdiction-code-map.json"));
+    makeDataRun(true);
+    var resultJson = fs.readFileSync(currDir("import-me.json"));
+    var resultObj = JSON.parse(resultJson);
+    expect(resultObj[0].issued).toEqual({"date-parts": [["2019"]]});
+    expect(resultObj[1].issued).toEqual({"date-parts": [["2019", "2", "11"]]});
+    expect(resultObj[2].issued).toEqual({"date-parts": [["2019", "2", "11"]]});
+});
+
+test('Issues a warning on an ambiguous date', () => {
+    fs.copyFileSync(filesDir("data-malta-ambiguous-date.csv"), currDir("data-malta.csv"));
+    fs.copyFileSync(filesDir("make-data-config-MALTA.json"), currDir("make-data-config.json"));
+    fs.copyFileSync(filesDir("court-code-map-MALTA.json"), currDir("court-code-map.json"));
+    fs.copyFileSync(filesDir("court-jurisdiction-code-map-MALTA.json"), currDir("court-jurisdiction-code-map.json"));
+    const consoleSpy = jest.spyOn(console, 'log');
+    makeDataRun(true);
+    var resultJson = fs.readFileSync(currDir("import-me.json"));
+    var resultObj = JSON.parse(resultJson);
+    expect(consoleSpy).toHaveBeenCalledWith('WARNING: ambiguous date \"01-01-2021\" at MT001');
+    expect(resultObj[0].issued).toEqual({"date-parts": [["2021", "1", "1"]]});
+});
+
+test('Throws an error on a badly formatted date', () => {
+    fs.copyFileSync(filesDir("data-malta-bad-text-date.csv"), currDir("data-malta.csv"));
+    fs.copyFileSync(filesDir("make-data-config-MALTA.json"), currDir("make-data-config.json"));
+    fs.copyFileSync(filesDir("court-code-map-MALTA.json"), currDir("court-code-map.json"));
+    fs.copyFileSync(filesDir("court-jurisdiction-code-map-MALTA.json"), currDir("court-jurisdiction-code-map.json"));
+    expect(() => {
+        makeDataRun(true)
+    }).toThrow('invalid');
+});
+
+
+
+test('Throws an error on an impossible date', () => {
+    fs.copyFileSync(filesDir("data-malta-impossible-date.csv"), currDir("data-malta.csv"));
+    fs.copyFileSync(filesDir("make-data-config-MALTA.json"), currDir("make-data-config.json"));
+    fs.copyFileSync(filesDir("court-code-map-MALTA.json"), currDir("court-code-map.json"));
+    fs.copyFileSync(filesDir("court-jurisdiction-code-map-MALTA.json"), currDir("court-jurisdiction-code-map.json"));
+
+    expect(() => {
+        makeDataRun(true)
+    }).toThrow('impossible');
+});
+
+
+test('Sets default national jurisdiction when input jurisdiction is empty', () => {
+    fs.copyFileSync(filesDir("data-malta-empty-jurisdiction.csv"), currDir("data-malta.csv"));
+    fs.copyFileSync(filesDir("make-data-config-MALTA.json"), currDir("make-data-config.json"));
+    fs.copyFileSync(filesDir("court-code-map-MALTA.json"), currDir("court-code-map.json"));
+    fs.copyFileSync(filesDir("court-jurisdiction-code-map-MALTA.json"), currDir("court-jurisdiction-code-map.json"));
+    const consoleSpy = jest.spyOn(console, 'log');
+    makeDataRun(true);
+    var resultJson = fs.readFileSync(currDir("import-me.json"));
+    var resultObj = JSON.parse(resultJson);
+    expect(resultObj[0].jurisdiction).toBe("mt");
+    expect(consoleSpy).toHaveBeenCalledTimes(0);
+});
