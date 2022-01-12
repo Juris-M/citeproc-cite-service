@@ -4,7 +4,7 @@
   "description": "Generate Jurism-compatible CSL-JSON import file from CULTEXP CSV data.",
   "main": "make-data.js",
   "dependencies": {
-    "markdown-it": "^12.3.0",
+    "markdown-it": "^12.3.2",
     "csv-parse": "^5.0.3"
   },
   "devDependencies": {
