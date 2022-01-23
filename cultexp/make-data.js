@@ -484,14 +484,13 @@ function addAttachment(config, line) {
     if (!suffix | ["A", "B", "C", "D"].indexOf(suffix) > -1) {
         attachments.push({
             path: filesPath(fn),
-            title: fn,
-            note: note,
+            title: `${fileCode}.pdf`,
             tags: [`LN:${config.defaultJurisdiction}`, "TY:judgment"]
         });
     } else if (suffix.slice(0, 2) === "ER") {
         attachments.push({
             path: filesPath(fn),
-            title: fn,
+            title: `${fileCode}.pdf`,
             note: note,
             tags: [`LN:${config.defaultJurisdiction}`, "TY:report"]
         });
@@ -505,7 +504,7 @@ function addAttachment(config, line) {
     };
 }
 
-function composeItem(config, line) {
+function composeItem(config, line, suppressAbstract) {
     var item = {
 		type: "legal_case",
 		multi: {
@@ -548,7 +547,9 @@ function composeItem(config, line) {
     } else {
         item["jurisdiction"] = config.defaultJurisdiction;
     }
-    item["abstract"] = getAbstract(line.summary);
+    if (!suppressAbstract) {
+        item["abstract"] = getAbstract(line.summary);
+    }
     // item.references = `appeal from ${record[6]}`;
     item["language"] = `${config.defaultJurisdiction}`;
     // item["number"] = number;
@@ -698,11 +699,21 @@ function run(quiet) {
                 var rootID = getRootID(line.id);
                 if (acc[rootID]) {
                     // console.log(`  Adding attachment for ${line.id} on ${rootID}`);
+                    // XXX The note on attachments that represent case reports (as shown
+                    // XXX in their CULTEXP ID) is automatically suppressed.
                     var newAttachments = addAttachment(config, line).attachments;
                     acc[rootID].attachments = acc[rootID].attachments.concat(newAttachments);
                     // console.log(`   len: ${acc[rootID].attachments.length}`);
                 } else {
-                    var item = composeItem(config, line);
+                    // XXX Some items have only an expert report. In these cases,
+                    // XXX we go ahead and treat the metadata of the expert report as
+                    // XXX the core metadata of the case, but suppress the abstract.
+                    var suppressAbstract = false;
+                    var suffix = line.id.slice(5);
+                    if (suffix && suffix.slice(0, 2) === "ER") {
+                        suppressAbstract = true;
+                    }
+                    var item = composeItem(config, line, suppressAbstract);
                     acc[rootID] = item;
                     //console.log(`   len: ${acc[rootID].attachments.length}`);
                 }
