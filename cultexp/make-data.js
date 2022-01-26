@@ -26,7 +26,7 @@ const validateDataFile = () => {
     var filenames = fs.readdirSync(".");
     var csvOK = false;
     for (var fn of filenames) {
-        if (fn.match(/data-[-a-zA-Z]+\.csv/)) {
+        if (fn.match(/^data-[-a-zA-Z]+\.csv$/)) {
             if (!csvOK) {
                 csvOK = true;
             } else {
@@ -265,6 +265,14 @@ if (csvparse.parse) {
 
 const filesPath = (filename) => {
     var pth = path.join(".", "files");
+    if (!fs.existsSync(pth)) {
+        var err = new Error(`Required subdirectory ./files does not exist. Create subdirectory and populate with attachment PDF files.`);
+        throw err;
+    }
+    if (!fs.existsSync(path.join(pth, "empty.pdf"))) {
+        var emptyPath = path.join(__dirname, "test", "test-files", "empty.pdf");
+        fs.copyFileSync(emptyPath, path.join(pth, "empty.pdf"));
+    }
     if (filename) {
         return path.join(pth, filename);
     } else {
@@ -357,7 +365,7 @@ const setCourtNameMap = (config) => {
 }
 
 const setCourt = (config, line) => {
-    var str = line.court;
+    var str = line.court.trim();
     if (config.courtNameMap[str]) {
         line.court = config.courtNameMap[str];
     } else {
