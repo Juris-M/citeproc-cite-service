@@ -1,0 +1,84 @@
+[
+  {
+    "type": "legal_case",
+    "multi": {
+      "main": {},
+      "_keys": {}
+    },
+    "id": "MT001",
+    "call-number": "MT001",
+    "number": "509/2018/LSO",
+    "issued": {
+      "date-parts": [
+        [
+          "2021",
+          "1",
+          "1"
+        ]
+      ]
+    },
+    "authority": "qcpa",
+    "jurisdiction": "mt",
+    "abstract": "Summary of case",
+    "language": "mt",
+    "attachments": [
+      {
+        "path": "files/empty.pdf",
+        "title": "MT001.pdf",
+        "tags": [
+          "LN:mt",
+          "TY:judgment"
+        ]
+      }
+    ],
+    "tags": "cn:MT,EP:written report,KW:Russian immigrants,KW:birth certificate,KW:name,KW:surname,KW:female,KW:Russian custom,KW:public Registry,AL:administrative law"
+  },
+  {
+    "type": "legal_case",
+    "multi": {
+      "main": {},
+      "_keys": {}
+    },
+    "id": "MT001",
+    "call-number": "MT001A",
+    "authority": "qa",
+    "jurisdiction": "mt",
+    "abstract": "Summary of appeal A",
+    "language": "mt",
+    "attachments": [
+      {
+        "path": "files/empty.pdf",
+        "title": "MT001A.pdf",
+        "tags": [
+          "LN:mt",
+          "TY:judgment"
+        ]
+      }
+    ],
+    "tags": "cn:MT"
+  },
+  {
+    "type": "legal_case",
+    "multi": {
+      "main": {},
+      "_keys": {}
+    },
+    "id": "MT001",
+    "call-number": "MT001B",
+    "authority": "qa",
+    "jurisdiction": "mt",
+    "abstract": "Summary of appeal B",
+    "language": "mt",
+    "attachments": [
+      {
+        "path": "files/empty.pdf",
+        "title": "MT001B.pdf",
+        "tags": [
+          "LN:mt",
+          "TY:judgment"
+        ]
+      }
+    ],
+    "tags": "cn:MT"
+  }
+]
