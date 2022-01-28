@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const fs = require("fs");
 const path = require("path");
-const csvparse = require("csv-parse/dist/umd/sync");
+const csvparse = require("csv-parse/sync");
 
 const markdown = require('markdown-it')({
     html: true,
@@ -380,6 +380,9 @@ const setCourt = (config, line) => {
                 }
                 if (elem[3]) {
                     line.type = elem[3];
+                }
+                if (elem[4]) {
+                    line.jurisdiction = elem[4];
                 }
                 break;
             }
