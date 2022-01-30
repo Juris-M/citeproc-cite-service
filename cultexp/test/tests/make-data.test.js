@@ -239,3 +239,17 @@ test('Copies empty.pdf placeholder into ./files automatically', () => {
     expect(consoleSpy).toHaveBeenCalledTimes(0);
     expect(resultObj).toEqual(expectedObj);
 });
+
+
+test('Processes a CSV file containing blank lines without error', () => {
+    fileSetup();
+    fs.copyFileSync(filesDir("data-malta-blank-lines.csv"), currDir("data-malta.csv"));
+    fs.copyFileSync(filesDir("make-data-config-MALTA.json"), currDir("make-data-config.json"));
+    fs.copyFileSync(filesDir("court-code-map-MALTA.json"), currDir("court-code-map.json"));
+    fs.copyFileSync(filesDir("court-jurisdiction-code-map-MALTA.json"), currDir("court-jurisdiction-code-map.json"));
+    const consoleSpy = jest.spyOn(console, 'log');
+    makeDataRun(true);
+
+    expect(consoleSpy).toHaveBeenCalledTimes(0);
+});
+
