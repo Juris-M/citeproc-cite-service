@@ -575,6 +575,7 @@ function getSpreadsheetArrays(path_to_csv) {
     var ret = [];
     var firstRecord = true;
     var txt = fs.readFileSync(path_to_csv).toString();
+    txt = txt.split(/[\n\r]+/).filter(line => line.trim() ? line : false).join("\n");
     var arr = csvparse.parse(txt);
     for (var record of arr) {
         if (firstRecord) {
@@ -586,37 +587,6 @@ function getSpreadsheetArrays(path_to_csv) {
             ret.push(record);
         }
     }
-
-    /*
-    var firstRecord = true;
-    var ret = [];
-    var spreadsheetArraysPromise = new Promise((resolve, reject) => {
-        parser.on("readable", function(){
-            let record
-            while (record = parser.read()) {
-                if (firstRecord) {
-                    if (record[0] || record[1]) {
-                        setColMap(record);
-                        firstRecord = false;
-                    }
-                } else {
-                    ret.push(record);
-                }
-            }
-        });
-        parser.on('error', function(err){
-            reject(err);
-        });
-        parser.on('end', function(){
-            resolve(ret);
-        });
-        // console.log(`Reading path_to_csv: ${path_to_csv}`);
-        var txt = fs.readFileSync(path_to_csv).toString();
-        parser.write(txt);
-        parser.end();
-    });
-    return spreadsheetArraysPromise;
-     */
     return ret;
 }
 
