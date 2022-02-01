@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 const fs = require("fs");
 const path = require("path");
-//const  csvparse = require("csv-parse/sync");
-const  csvparse = require("csv-parse/dist/cjs/sync.cjs");
+
+var csvparse
+try {
+    csvparse = require("csv-parse/sync");
+} catch(e) {
+    csvparse = require("csv-parse/dist/cjs/sync.cjs");
+}
 
 const markdown = require('markdown-it')({
     html: true,
