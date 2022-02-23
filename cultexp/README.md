@@ -1,6 +1,10 @@
 `make-data` CSV→CSL-JSON conversion script
 ==========================================
 
+Acknowledgement
+---------------
+Juris-M/citeproc-cite-service was developed by Frank Bennett and is a primary output of EURO-EXPERT (n.161814) funded by the European Research Council.
+
 Introduction
 ------------
 
