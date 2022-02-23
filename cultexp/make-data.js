@@ -649,33 +649,55 @@ function run(quiet) {
             }
             var jurisdictionInfo = config.jurisObj[topJurisdiction].jurisdictions[line.jurisdiction];
             if (jurisdictionInfo) {
+                // zzzz
+                // console.log("HAVE jurisdictionInfo OK");
+                // console.log(`line.court=${line.court}`);
                 if (jurisdictionInfo.courts[line.court]) {
                     valid = true;
                 }
+            } else {
+                // zzzz
+                // console.log(`topJurisdiction=${topJurisdiction}, line.jurisdiction=${line.jurisdiction}`);
             }
             if (!valid) {
-                if (!config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`]) {
+                console.log(line.id);
+                // zzzz
+                // console.log(JSON.stringify(config.courtJurisdictionCodeMap, null, 2));
+                // Check first if jurisdiction exists.
+                // If jurisdiction clears, issue ADD TO CODE MAP warning
+                // If jurisdiction does not clear, issue JURISDICTION DOES NOT EXIST error
+                var countryName, countryCode;
+                if (jurisdictionInfo) {
+                    var countryCode = line.jurisdiction.split(":")[0];
+                    var countryName = config.jurisObj[countryCode].jurisdictions[countryCode].name;
+                }
+                if (!jurisdictionInfo) {
+                    console.log(`    ERROR: jurisdiction code "${line.jurisdiction}" does not exist in the LRR`);
+                } else if (!config.jurisObj[countryCode].courts[line.court]) {
+                    console.log(`    WARNING: "${line.court}" is not a valid court code in LRR country ${countryName} (${countryCode}).`);
+                    if (!config.quiet) {
+                        console.log(`    * If the court is listed in the LRR, set a correct code mapping in ${config.courtJurisdictionMapFilePath}`);
+                        console.log(`    * If the court is not listed in the LRR, you may leave the entry as it stands.`);
+                    }
+                } else if (!config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`]) {
                     var info = {
                         court: line.court,
                         jurisdiction: line.jurisdiction
                     };
                     config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`] = info;
-                    console.log(`ADDING TO CODE MAP: [${line.court}::${line.jurisdiction}]`);
+                    console.log(`    WARNING: court code ${line.court} does not exist in LRR jurisdiction ${line.jurisdiction}`);
                     if (!config.quiet) {
-                        console.log(`    Adjust jurisdiction and court code values in ${config.courtJurisdictionMapFilePath}`);
+                        console.log(`    * Check the LRR and adjust the mapping in ${config.courtJurisdictionMapFilePath}, or request an amendment to the LRR`);
                     }
                 } else {
-                    console.log(`WARNING: Invalid entry at ${line.court}::${line.jurisdiction}`);
+                    console.log(`    ERROR: Invalid mapping ${line.court}::${line.jurisdiction}`);
                     if (!config.quiet) {
-                        console.log(`    Check jurisdiction and court codes against data in ${config.jurisdictionDescMapPath}`);
+                        console.log(`    * Fix the erroneous mapping set in ${config.jurisdictionDescMapPath}`);
                     }
                 }
             }
             
             try {
-                if (!config.quiet) {
-                    console.log(line.id);
-                }
                 if (line.court === "Court" && line.jurisdiction === "Jurisdiction") {
                     continue;
                 }
