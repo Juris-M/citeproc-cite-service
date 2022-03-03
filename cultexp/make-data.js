@@ -672,6 +672,11 @@ function run(quiet) {
                     var countryName = config.jurisObj[countryCode].jurisdictions[countryCode].name;
                 }
                 if (!jurisdictionInfo) {
+                    var info = {
+                        court: line.court,
+                        jurisdiction: line.jurisdiction
+                    };
+                    config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`] = info;
                     console.log(`    ERROR: jurisdiction code "${line.jurisdiction}" does not exist in the LRR`);
                 } else if (!config.jurisObj[countryCode].courts[line.court]) {
                     console.log(`    WARNING: "${line.court}" is not a valid court code in LRR country ${countryName} (${countryCode}).`);
