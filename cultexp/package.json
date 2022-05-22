@@ -1,11 +1,12 @@
 {
   "name": "make-data",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Generate Jurism-compatible CSL-JSON import file from CULTEXP CSV data.",
   "main": "make-data.js",
   "dependencies": {
     "markdown-it": "^12.3.0",
-    "csv-parse": ">=5.0.3"
+      "csv-parse": ">=5.0.3",
+      "getopts": "^2.3.0"
   },
   "devDependencies": {
     "jest": "^27.4.4"
