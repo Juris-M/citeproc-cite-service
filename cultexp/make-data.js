@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const fs = require("fs");
 const path = require("path");
+const getopts = require("getopts");
 
 var csvparse
 try {
@@ -50,10 +51,12 @@ const validateDataFile = () => {
 /*
  Setup config
  */
-const setupConfig = (quiet) => {
-    var config = {};
-    if (quiet) {
-        config.quiet = true;
+const setupConfig = (opts) => {
+    var config = {
+        opts: {}
+    };
+    if (opts) {
+        config.opts = opts;
     }
     var configPath = path.join(".", "make-data-config.json");
     if (!fs.existsSync(configPath)) {
@@ -83,9 +86,7 @@ const setupConfig = (quiet) => {
     config.courtHintFilePath = path.join(".", "court-code-map.json");
     config.createCourtHintFile = false;
 
-    if (!config.quiet) {
-        console.log(`Running with data file stub: ${config.fileNameStub}`);
-    }
+    console.log(`Running with data file stub: ${config.fileNameStub}`);
     return config;
 }
 
@@ -179,7 +180,7 @@ function setColMap(record) {
 }
 
 function checkColMap(config) {
-    if (!config.quiet) {
+    if (!config.opts.quiet && !config.opts.Quiet) {
         for (var key in colMapHints) {
             if (colMap.indexOf(key) === -1) {
                 console.log(`No column found for: ${key}`);
@@ -448,7 +449,7 @@ function getDate(item, str) {
     }
     if (dateType === 1) {
         if (parseInt(lst[2]) < 13) {
-            console.log(`WARNING: ambiguous date "${str}" at ${item["call-number"]}`);
+            console.log(`    ERROR: ambiguous date "${str}" at ${item["call-number"]}`);
         }
     }
     ret.push(lst[0].replace(/^0+/, ""));
@@ -598,9 +599,9 @@ function getSpreadsheetArrays(path_to_csv) {
 
 var deletes = [];
 
-function run(quiet) {
+function run(opts) {
     validateDataFile();
-    var config = setupConfig(quiet);
+    var config = setupConfig(opts);
     setJurisObj(config);
     setJurisdictionNameMap(config);
     setCourtCodeMap(config);
@@ -649,40 +650,55 @@ function run(quiet) {
             }
             var jurisdictionInfo = config.jurisObj[topJurisdiction].jurisdictions[line.jurisdiction];
             if (jurisdictionInfo) {
-                // zzzz
-                // console.log("HAVE jurisdictionInfo OK");
-                // console.log(`line.court=${line.court}`);
                 if (jurisdictionInfo.courts[line.court]) {
                     valid = true;
                 }
-            } else {
-                // zzzz
-                // console.log(`topJurisdiction=${topJurisdiction}, line.jurisdiction=${line.jurisdiction}`);
             }
             if (!valid) {
-                console.log(line.id);
-                // zzzz
-                // console.log(JSON.stringify(config.courtJurisdictionCodeMap, null, 2));
-                // Check first if jurisdiction exists.
-                // If jurisdiction clears, issue ADD TO CODE MAP warning
-                // If jurisdiction does not clear, issue JURISDICTION DOES NOT EXIST error
+                
+                // If this is reached, errors issue unconditionally, and
+                // warnings issue if --quiet is not set.
+                
+                // Logic and logging are separated since the output of
+                // the latter is dependent on the final outcome of the
+                // former
+                
                 var countryName, countryCode;
                 if (jurisdictionInfo) {
                     var countryCode = line.jurisdiction.split(":")[0];
-                    var countryName = config.jurisObj[countryCode].jurisdictions[countryCode].name;
-                }
+                } else {
+                    var countryCode = topJurisdiction;
+                };
+
+                var countryName = config.jurisObj[countryCode].jurisdictions[countryCode].name;
+
+                var errAcc = {
+                    trigger: false,
+                    errors: {
+                        jurisdictionInfo: null,
+                        invalidMapping: null
+                    },
+                    warnings: {
+                        courtNotValid: null,
+                        unknownCourt: null,
+                        emptyCourt: null
+                    }
+                };
                 if (!jurisdictionInfo) {
                     var info = {
                         court: line.court,
                         jurisdiction: line.jurisdiction
                     };
                     config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`] = info;
-                    console.log(`    ERROR: jurisdiction code "${line.jurisdiction}" does not exist in the LRR`);
-                } else if (!config.jurisObj[countryCode].courts[line.court]) {
-                    console.log(`    WARNING: "${line.court}" is not a valid court code in LRR country ${countryName} (${countryCode}).`);
-                    if (!config.quiet) {
-                        console.log(`    * If the court is listed in the LRR, set a correct code mapping in ${config.courtJurisdictionMapFilePath}`);
-                        console.log(`    * If the court is not listed in the LRR, you may leave the entry as it stands.`);
+                    errAcc.trigger = true;
+                    errAcc.errors.jurisdictionInfo = true;
+                }
+                if (!config.jurisObj[countryCode].courts[line.court]) {
+                    errAcc.trigger = true;
+                    if (line.court) {
+                        errAcc.warnings.courtNotValid = true;
+                    } else {
+                        errAcc.warnings.emptyCourt = true;
                     }
                 } else if (!config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`]) {
                     var info = {
@@ -690,16 +706,52 @@ function run(quiet) {
                         jurisdiction: line.jurisdiction
                     };
                     config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`] = info;
-                    console.log(`    WARNING: court code ${line.court} does not exist in LRR jurisdiction ${line.jurisdiction}`);
-                    if (!config.quiet) {
-                        console.log(`    * Check the LRR and adjust the mapping in ${config.courtJurisdictionMapFilePath}, or request an amendment to the LRR`);
+                    errAcc.trigger = true;
+                    if (line.court) {
+                        errAcc.warnings.unknownCourt = true;
+                    } else {
+                        errAcc.warnings.emptyCourt = true;
                     }
                 } else {
-                    console.log(`    ERROR: Invalid mapping ${line.court}::${line.jurisdiction}`);
-                    if (!config.quiet) {
-                        console.log(`    * Fix the erroneous mapping set in ${config.jurisdictionDescMapPath}`);
+                    errAcc.trigger = true;
+                    errAcc.errors.invalidMapping = true;
+                }
+                if (errAcc.trigger) {
+                    if (errAcc.errors.jurisdictionInfo
+                        || errAcc.errors.invalidMapping
+                        || (!config.opts.Q && !config.opts.q)
+                        || (
+                            config.opts.q && (errAcc.warnings.unknownCourt || errAcc.warnings.courtNotValid)
+                        )
+                       ) {
+                        console.log(line.id);
+                    }
+                    if (errAcc.errors.jurisdictionInfo) {
+                        console.log(`    ERROR: mapping required for "${line.jurisdiction}" in court-jurisdiction-code-map.json`);
+                    }
+                    if (errAcc.errors.invalidMapping) {
+                        console.log(`    ERROR: Invalid mapping ${line.court}::${line.jurisdiction} in court-jurisdiction-code-map.json`);
+                    }
+                    if (!config.opts.Quiet) {
+                        if (errAcc.warnings.courtNotValid) {
+                            console.log(`    WARNING: "${line.court}" is not a valid court code in LRR country ${countryName} (${countryCode}).`);
+                            console.log(`    * If the court is listed in the LRR, set a correct code mapping in ${config.courtJurisdictionMapFilePath}`);
+                            console.log(`    * If the court is not listed in the LRR, you may leave the entry as it stands.`);
+                        }
+                        if (errAcc.warnings.unknownCourt) {
+                            console.log(`    WARNING: court code ${line.court} does not exist in LRR jurisdiction ${line.jurisdiction}`);
+                            console.log(`    * Check the LRR and adjust the mapping in ${config.courtJurisdictionMapFilePath}, or request an amendment to the LRR`);
+                        }
+                    }
+                    if (!config.opts.quiet && !config.opts.Quiet) {
+                        if (errAcc.warnings.emptyCourt) {
+                            console.log(`    WARNING: court code is empty in spreadsheet`);
+                            console.log(`    * Provide a value if necessary.`);
+                            console.log(`    * To suppress this message, run make-data with the -Q option.`);
+                        }
                     }
                 }
+
             }
             
             try {
@@ -760,15 +812,44 @@ function run(quiet) {
 
 if (require.main === module) {
     
-    // If run as a script
-    // (async function() {
-//        try {
-            run();
-  //      } catch (e) {
-    //        handleError(e);
-      //  }
-    // }());
+    const optParams = {
+        alias: {
+            q : "quiet",
+            Q : "Quiet",
+            v : "version",
+            h: "help"
+        },
+        string: ["d"],
+        boolean: ["q", "Q", "h"],
+        unknown: option => {
+            abort("unknown option \"" +option + "\"");
+        }
+    };
+
+    const usage = "Usage: " + path.basename(process.argv[1]) + " [options]\n"
+      + "  -q, --quiet\n"
+      + "    Suppress only empty-court warnings.\n"
+      + "  -Q, --Quiet\n"
+      + "    Suppress all warnings, show only errors.\n"
+      + "  -v, --version\n"
+      + "    Show script version..\n"
+      + "  -h, --help\n"
+      + "    This help.\n";
+
+    const opts = getopts(process.argv.slice(2), optParams);
+
+    if (opts.v) {
+        var package = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json")).toString());
+        console.log(package.version);
+        process.exit();
+    }
+
+    if (opts.h) {
+        console.log(usage);
+        process.exit();
+    }
+    
+    run(opts);
 } else {
     module.exports = run;
 }
-// Otherwise export "run" function
