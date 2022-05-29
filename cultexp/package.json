@@ -5,8 +5,8 @@
   "main": "make-data.js",
   "dependencies": {
     "markdown-it": "^12.3.0",
-      "csv-parse": ">=5.0.3",
-      "getopts": "^2.3.0"
+    "csv-parse": ">=5.0.3",
+    "getopts": "^2.3.0"
   },
   "devDependencies": {
     "jest": "^27.4.4"
