@@ -533,7 +533,17 @@ function composeItem(config, line, suppressAbstract) {
     item["id"] = line.id.trim().slice(0, 5);
     item["call-number"] = line.id.trim();
     if (line.docketno) {
-        item["number"] = line.docketno;
+        var offset = -1;
+        if (config.opts.lstripto) {
+            var str = config.opts.lstripto;
+            var offset = line.docketno.indexOf(str);
+        }
+        if (offset > -1) {
+            offset = offset + str.length;
+            item["number"] = line.docketno.slice(offset);
+        } else {
+            item["number"] = line.docketno;
+        }
     }
     if (line.type) {
         item["genre"] = line.type;
@@ -814,12 +824,13 @@ if (require.main === module) {
     
     const optParams = {
         alias: {
+            L : "lstripto",
             q : "quiet",
             Q : "Quiet",
             v : "version",
             h: "help"
         },
-        string: ["d"],
+        string: ["L"],
         boolean: ["q", "Q", "h"],
         unknown: option => {
             abort("unknown option \"" +option + "\"");
@@ -827,6 +838,8 @@ if (require.main === module) {
     };
 
     const usage = "Usage: " + path.basename(process.argv[1]) + " [options]\n"
+      + "  -L, --lstripto STR\n"
+      + "    Remove text from left of number field to designated string.\n"
       + "  -q, --quiet\n"
       + "    Suppress only empty-court warnings.\n"
       + "  -Q, --Quiet\n"
