@@ -36,7 +36,7 @@
     <style-options
         name-as-sort-order="ko zh ja hu my km vi"
         name-never-short="my ko zh ja hu km vi"
-        jurisdiction-preference="englished cultexp"/>
+        jurisdiction-preference="cultexp"/>
     <terms>
       <term name="paragraph" form="static">[%s]</term>
     </terms>
