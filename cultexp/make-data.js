@@ -250,7 +250,11 @@ function loadLine(record) {
     for (var i=0,ilen=colMap.length; i<ilen; i++) {
         var key = colMap[i];
         if (!key) continue;
-        ret[key] = record[i];
+        if (record[i]) {
+            ret[key] = record[i].trim();
+        } else {
+            ret[key] = record[i].trim();
+        }
     }
     return ret;
 }
@@ -490,7 +494,8 @@ function addAttachment(config, line) {
     if (!fs.existsSync(filesPath(fn))) {
         fn = "empty.pdf";
     }
-    var suffix = fileCode.slice(5);
+    var suffix = fileCode.slice(5).replace(/ER[a-z]?$/, "");
+    var reportflag = fileCode.replace(/.*(ER[a-z]?)$/, "$1");
     // Root filename suffixes in this jurisdiction:
     // A
     // B
@@ -505,16 +510,17 @@ function addAttachment(config, line) {
             title: `${fileCode}.pdf`,
             tags: [`LN:${config.defaultJurisdiction}`, "TY:judgment"]
         });
-    } else if (suffix.slice(0, 2) === "ER") {
+    } else {
+        console.log(`  Oops on suffix="${suffix}" from line.id="${line.id}"`);
+        process.exit();
+    }
+    if (reportflag.slice(0, 2) === "ER") {
         attachments.push({
             path: filesPath(fn),
             title: `${fileCode}.pdf`,
             note: note,
             tags: [`LN:${config.defaultJurisdiction}`, "TY:report"]
         });
-    } else {
-        console.log(`  Oops ${suffix}`);
-        process.exit();
     }
     return {
         attachments: attachments,
@@ -694,7 +700,7 @@ function run(opts) {
                         emptyCourt: null
                     }
                 };
-                if (!jurisdictionInfo) {
+                if (!jurisdictionInfo || (line.court && !config.jurisObj[countryCode].courts[line.court])) {
                     var info = {
                         court: line.court,
                         jurisdiction: line.jurisdiction
