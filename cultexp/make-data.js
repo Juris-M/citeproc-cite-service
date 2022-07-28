@@ -650,7 +650,11 @@ function run(opts) {
             // Validate court in jurisdiction
             if (!line.jurisdiction) {
                 line.jurisdiction = config.defaultJurisdiction;
+                if (config.opts.N) {
+                    line.court = null;
+                }
             }
+
             var valid = false;
             // Extend jurisdiction descriptions if necessary and if possible
             var topJurisdiction = line.jurisdiction.split(":")[0];
@@ -831,21 +835,25 @@ if (require.main === module) {
     const optParams = {
         alias: {
             L : "lstripto",
+            N : "no-jurisdiction-no-court",
             q : "quiet",
             Q : "Quiet",
             v : "version",
             h: "help"
         },
         string: ["L"],
-        boolean: ["q", "Q", "h"],
+        boolean: ["N", "q", "Q", "h"],
         unknown: option => {
-            abort("unknown option \"" +option + "\"");
+            console.log("make-data error: unknown option \"" +option + "\"");
+            process.exit();
         }
     };
 
     const usage = "Usage: " + path.basename(process.argv[1]) + " [options]\n"
       + "  -L, --lstripto STR\n"
       + "    Remove text from left of number field to designated string.\n"
+      + "  -N, --no-jurisdiction-no-court\n"
+      + "    If jurisdiction field is empty, set court field to empty also.\n"
       + "  -q, --quiet\n"
       + "    Suppress only empty-court warnings.\n"
       + "  -Q, --Quiet\n"
