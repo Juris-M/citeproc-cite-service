@@ -495,7 +495,7 @@ function addAttachment(config, line) {
         fn = "empty.pdf";
     }
     var suffix = fileCode.slice(5).replace(/ER[a-z]?$/, "");
-    var reportflag = fileCode.replace(/.*(ER[a-z]?)$/, "$1");
+    var reportflag = fileCode.slice(5).replace(/.*(ER[a-z]?)$/, "$1");
     // Root filename suffixes in this jurisdiction:
     // A
     // B
@@ -504,15 +504,17 @@ function addAttachment(config, line) {
     // ER
     // ERa
     // ERb
-    if (!suffix | ["A", "B", "C", "D"].indexOf(suffix) > -1) {
-        attachments.push({
-            path: filesPath(fn),
-            title: `${fileCode}.pdf`,
-            tags: [`LN:${config.defaultJurisdiction}`, "TY:judgment"]
-        });
-    } else {
-        console.log(`  Oops on suffix="${suffix}" from line.id="${line.id}"`);
-        process.exit();
+    if (!reportflag) {
+        if (!suffix | ["A", "B", "C", "D"].indexOf(suffix) > -1) {
+            attachments.push({
+                path: filesPath(fn),
+                title: `${fileCode}.pdf`,
+                tags: [`LN:${config.defaultJurisdiction}`, "TY:judgment"]
+            });
+        } else {
+            console.log(`  Oops on suffix="${suffix}" from line.id="${line.id}"`);
+            process.exit();
+        }
     }
     if (reportflag.slice(0, 2) === "ER") {
         attachments.push({
@@ -635,145 +637,149 @@ function run(opts) {
         for (var record of arrays) {
             
             var line = loadLine(record);
+            var rootID = getRootID(line.id);
+
             // Attempt to normalize jurisdiction code
             line.jurisdiction = getJurisdiction(config, line.jurisdiction);
-
-            // Attempt to normalize court code
-            setCourt(config, line);
-
-            var info = config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`];
-            if (info) {
-                line.court = info.court;
-                line.jurisdiction = info.jurisdiction;
-            }
             
-            // Validate court in jurisdiction
-            if (!line.jurisdiction) {
-                line.jurisdiction = config.defaultJurisdiction;
-                if (config.opts.N) {
-                    line.court = null;
-                }
-            }
+            if (!acc[rootID]) {
+                
+                // Attempt to normalize court code
+                setCourt(config, line);
 
-            var valid = false;
-            // Extend jurisdiction descriptions if necessary and if possible
-            var topJurisdiction = line.jurisdiction.split(":")[0];
-                
-            if (!config.jurisObj[topJurisdiction]) {
-                var pth = config.jurisdictionDescMapPath.replace(`juris-${config.defaultJurisdiction}`, `juris-${topJurisdiction}`);
-                if (fs.existsSync(pth)) {
-                    // console.log(`Reading pth: ${pth}`);
-                    config.jurisObj[topJurisdiction] = JSON.parse(fs.readFileSync(pth).toString());
-                } else {
-                    topJurisdiction = config.defaultJurisdiction;
+                var info = config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`];
+                if (info) {
+                    line.court = info.court;
+                    line.jurisdiction = info.jurisdiction;
                 }
-            }
-            var jurisdictionInfo = config.jurisObj[topJurisdiction].jurisdictions[line.jurisdiction];
-            if (jurisdictionInfo) {
-                if (jurisdictionInfo.courts[line.court]) {
-                    valid = true;
+                
+                // Validate court in jurisdiction
+                if (!line.jurisdiction) {
+                    line.jurisdiction = config.defaultJurisdiction;
+                    if (config.opts.N) {
+                        line.court = null;
+                    }
                 }
-            }
-            if (!valid) {
+
+                var valid = false;
+                // Extend jurisdiction descriptions if necessary and if possible
+                var topJurisdiction = line.jurisdiction.split(":")[0];
                 
-                // If this is reached, errors issue unconditionally, and
-                // warnings issue if --quiet is not set.
-                
-                // Logic and logging are separated since the output of
-                // the latter is dependent on the final outcome of the
-                // former
-                
-                var countryName, countryCode;
+                if (!config.jurisObj[topJurisdiction]) {
+                    var pth = config.jurisdictionDescMapPath.replace(`juris-${config.defaultJurisdiction}`, `juris-${topJurisdiction}`);
+                    if (fs.existsSync(pth)) {
+                        // console.log(`Reading pth: ${pth}`);
+                        config.jurisObj[topJurisdiction] = JSON.parse(fs.readFileSync(pth).toString());
+                    } else {
+                        topJurisdiction = config.defaultJurisdiction;
+                    }
+                }
+                var jurisdictionInfo = config.jurisObj[topJurisdiction].jurisdictions[line.jurisdiction];
                 if (jurisdictionInfo) {
-                    var countryCode = line.jurisdiction.split(":")[0];
-                } else {
-                    var countryCode = topJurisdiction;
-                };
-
-                var countryName = config.jurisObj[countryCode].jurisdictions[countryCode].name;
-
-                var errAcc = {
-                    trigger: false,
-                    errors: {
-                        jurisdictionInfo: null,
-                        invalidMapping: null
-                    },
-                    warnings: {
-                        courtNotValid: null,
-                        unknownCourt: null,
-                        emptyCourt: null
+                    if (jurisdictionInfo.courts[line.court]) {
+                        valid = true;
                     }
-                };
-                if (!jurisdictionInfo || (line.court && !config.jurisObj[countryCode].courts[line.court])) {
-                    var info = {
-                        court: line.court,
-                        jurisdiction: line.jurisdiction
-                    };
-                    config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`] = info;
-                    errAcc.trigger = true;
-                    errAcc.errors.jurisdictionInfo = true;
                 }
-                if (!config.jurisObj[countryCode].courts[line.court]) {
-                    errAcc.trigger = true;
-                    if (line.court) {
-                        errAcc.warnings.courtNotValid = true;
+                if (!valid) {
+                    
+                    // If this is reached, errors issue unconditionally, and
+                    // warnings issue if --quiet is not set.
+                    
+                    // Logic and logging are separated since the output of
+                    // the latter is dependent on the final outcome of the
+                    // former
+                    
+                    var countryName, countryCode;
+                    if (jurisdictionInfo) {
+                        var countryCode = line.jurisdiction.split(":")[0];
                     } else {
-                        errAcc.warnings.emptyCourt = true;
-                    }
-                } else if (!config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`]) {
-                    var info = {
-                        court: line.court,
-                        jurisdiction: line.jurisdiction
+                        var countryCode = topJurisdiction;
                     };
-                    config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`] = info;
-                    errAcc.trigger = true;
-                    if (line.court) {
-                        errAcc.warnings.unknownCourt = true;
-                    } else {
-                        errAcc.warnings.emptyCourt = true;
-                    }
-                } else {
-                    errAcc.trigger = true;
-                    errAcc.errors.invalidMapping = true;
-                }
-                if (errAcc.trigger) {
-                    if (errAcc.errors.jurisdictionInfo
-                        || errAcc.errors.invalidMapping
-                        || (!config.opts.Q && !config.opts.q)
-                        || (
-                            config.opts.q && (errAcc.warnings.unknownCourt || errAcc.warnings.courtNotValid)
-                        )
-                       ) {
-                        console.log(line.id);
-                    }
-                    if (errAcc.errors.jurisdictionInfo) {
-                        console.log(`    ERROR: mapping required for "${line.jurisdiction}" in court-jurisdiction-code-map.json`);
-                    }
-                    if (errAcc.errors.invalidMapping) {
-                        console.log(`    ERROR: Invalid mapping ${line.court}::${line.jurisdiction} in court-jurisdiction-code-map.json`);
-                    }
-                    if (!config.opts.Quiet) {
-                        if (errAcc.warnings.courtNotValid) {
-                            console.log(`    WARNING: "${line.court}" is not a valid court code in LRR country ${countryName} (${countryCode}).`);
-                            console.log(`    * If the court is listed in the LRR, set a correct code mapping in ${config.courtJurisdictionMapFilePath}`);
-                            console.log(`    * If the court is not listed in the LRR, you may leave the entry as it stands.`);
-                        }
-                        if (errAcc.warnings.unknownCourt) {
-                            console.log(`    WARNING: court code ${line.court} does not exist in LRR jurisdiction ${line.jurisdiction}`);
-                            console.log(`    * Check the LRR and adjust the mapping in ${config.courtJurisdictionMapFilePath}, or request an amendment to the LRR`);
-                        }
-                    }
-                    if (!config.opts.quiet && !config.opts.Quiet) {
-                        if (errAcc.warnings.emptyCourt) {
-                            console.log(`    WARNING: court code is empty in spreadsheet`);
-                            console.log(`    * Provide a value if necessary.`);
-                            console.log(`    * To suppress this message, run make-data with the -Q option.`);
-                        }
-                    }
-                }
 
+                    var countryName = config.jurisObj[countryCode].jurisdictions[countryCode].name;
+
+                    var errAcc = {
+                        trigger: false,
+                        errors: {
+                            jurisdictionInfo: null,
+                            invalidMapping: null
+                        },
+                        warnings: {
+                            courtNotValid: null,
+                            unknownCourt: null,
+                            emptyCourt: null
+                        }
+                    };
+                    if (!jurisdictionInfo || (line.court && !config.jurisObj[countryCode].courts[line.court])) {
+                        var info = {
+                            court: line.court,
+                            jurisdiction: line.jurisdiction
+                        };
+                        config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`] = info;
+                        errAcc.trigger = true;
+                        errAcc.errors.jurisdictionInfo = true;
+                    }
+                    if (!config.jurisObj[countryCode].courts[line.court]) {
+                        errAcc.trigger = true;
+                        if (line.court) {
+                            errAcc.warnings.courtNotValid = true;
+                        } else {
+                            errAcc.warnings.emptyCourt = true;
+                        }
+                    } else if (!config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`]) {
+                        var info = {
+                            court: line.court,
+                            jurisdiction: line.jurisdiction
+                        };
+                        config.courtJurisdictionCodeMap[`${line.court}::${line.jurisdiction}`] = info;
+                        errAcc.trigger = true;
+                        if (line.court) {
+                            errAcc.warnings.unknownCourt = true;
+                        } else {
+                            errAcc.warnings.emptyCourt = true;
+                        }
+                    } else {
+                        errAcc.trigger = true;
+                        errAcc.errors.invalidMapping = true;
+                    }
+                    if (errAcc.trigger) {
+                        if (errAcc.errors.jurisdictionInfo
+                            || errAcc.errors.invalidMapping
+                            || (!config.opts.Q && !config.opts.q)
+                            || (
+                                config.opts.q && (errAcc.warnings.unknownCourt || errAcc.warnings.courtNotValid)
+                            )
+                           ) {
+                            console.log(line.id);
+                        }
+                        if (errAcc.errors.jurisdictionInfo) {
+                            console.log(`    ERROR: mapping required for "${line.jurisdiction}" in court-jurisdiction-code-map.json`);
+                        }
+                        if (errAcc.errors.invalidMapping) {
+                            console.log(`    ERROR: Invalid mapping ${line.court}::${line.jurisdiction} in court-jurisdiction-code-map.json`);
+                        }
+                        if (!config.opts.Quiet) {
+                            if (errAcc.warnings.courtNotValid) {
+                                console.log(`    WARNING: "${line.court}" is not a valid court code in LRR country ${countryName} (${countryCode}).`);
+                                console.log(`    * If the court is listed in the LRR, set a correct code mapping in ${config.courtJurisdictionMapFilePath}`);
+                                console.log(`    * If the court is not listed in the LRR, you may leave the entry as it stands.`);
+                            }
+                            if (errAcc.warnings.unknownCourt) {
+                                console.log(`    WARNING: court code ${line.court} does not exist in LRR jurisdiction ${line.jurisdiction}`);
+                                console.log(`    * Check the LRR and adjust the mapping in ${config.courtJurisdictionMapFilePath}, or request an amendment to the LRR`);
+                            }
+                        }
+                        if (!config.opts.quiet && !config.opts.Quiet) {
+                            if (errAcc.warnings.emptyCourt) {
+                                console.log(`    WARNING: court code is empty in spreadsheet`);
+                                console.log(`    * Provide a value if necessary.`);
+                                console.log(`    * To suppress this message, run make-data with the -Q option.`);
+                            }
+                        }
+                    }
+
+                }
             }
-            
             try {
                 if (line.court === "Court" && line.jurisdiction === "Jurisdiction") {
                     continue;
@@ -782,7 +788,6 @@ function run(opts) {
                 // Okay. Here we create the CSL import object
                 var filePath = filesPath(`${line.id}.pdf`);
 
-                var rootID = getRootID(line.id);
                 if (acc[rootID]) {
                     // console.log(`  Adding attachment for ${line.id} on ${rootID}`);
                     // XXX The note on attachments that represent case reports (as shown
