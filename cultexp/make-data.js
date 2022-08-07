@@ -743,7 +743,8 @@ function run(opts) {
                         errAcc.errors.invalidMapping = true;
                     }
                     if (errAcc.trigger) {
-                        if (errAcc.errors.jurisdictionInfo
+                        if (errAcc.errors.jurisdictionInfo && !errAcc.warnings.courtNotValid
+
                             || errAcc.errors.invalidMapping
                             || (!config.opts.Q && !config.opts.q)
                             || (
@@ -752,7 +753,7 @@ function run(opts) {
                            ) {
                             console.log(line.id);
                         }
-                        if (errAcc.errors.jurisdictionInfo) {
+                        if (errAcc.errors.jurisdictionInfo && !errAcc.warnings.courtNotValid) {
                             console.log(`    ERROR: mapping required for "${line.jurisdiction}" in court-jurisdiction-code-map.json`);
                         }
                         if (errAcc.errors.invalidMapping) {
