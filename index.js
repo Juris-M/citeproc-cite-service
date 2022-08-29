@@ -75,6 +75,7 @@ function abort(msg) {
 }
 
 var Runner = function(opts, callbacks) {
+    this.emptyPdfInfo = [];
     this.keyCacheJson = "keyCache.json";
     this.cfg = getConfig(opts, this.keyCacheJson);
     this.cfg.opts = opts;
@@ -287,6 +288,11 @@ Runner.prototype.buildSiteAttachment = function(attachment, fulltext){
     var type = this.extractTag(attachment.tags, "TY:", false);
     var ocr = this.extractTag(attachment.tags, "OCR:", false);
     this.oldVersions.attachments[attachment.key] = attachment.version;
+    if (this.cfg.opts.y) {
+        if (attachment.filename === "empty.pdf") {
+            this.emptyPdfInfo.push(attachment);
+        }
+    }
     var ret = {
         key: attachment.key,
         parentKey: attachment.parentItem,
@@ -460,6 +466,18 @@ Runner.prototype.run = async function() {
 
         // Memo current library and item versions
         this.updateVersionCache(newVersions.library);
+
+        // Finally, yeet placeholder PDFs if requested
+        if (this.cfg.opts.y) {
+            var filesDir = path.join(this.cfg.dirs.topDir, "files");
+            for (var info of this.emptyPdfInfo) {
+                var filePath = path.join(filesDir, `${info.key}.pdf`);
+                if (fs.existsSync(filePath)) {
+                    console.log(`removing empty placeholder PDF file: ${info.title} [${info.key}]`);
+                    fs.unlinkSync(filePath);
+                }
+            }
+        } 
         console.log("Done!");
     } catch (e) {
         handleError(e);
@@ -468,13 +486,14 @@ Runner.prototype.run = async function() {
 
 const optParams = {
     alias: {
-        i : "init",
+        i: "init",
         d: "data-dir",
-	v: "version",
+        y: "yeet-placeholder-pdfs",
+        v: "version",
         h: "help"
     },
     string: ["d"],
-    boolean: ["h", "i"],
+    boolean: ["h", "i", "y", "v"],
     unknown: option => {
         abort("unknown option \"" +option + "\"");
     }
@@ -484,7 +503,11 @@ const usage = "Usage: " + path.basename(process.argv[1]) + " [options]\n"
       + "  -i, --init\n"
       + "    Initialize the current directory or --data-dir.\n"
       + "  -d, --data-dir <dataDirPath>\n"
-      + "    Absolute path to a citeproc-cite-service data directory.\n";
+      + "    Absolute path to a citeproc-cite-service data directory.\n"
+      + "  -y, --yeet-placeholder-pdfs\n"
+      + "    Skip placeholder PDF files included in the download\n"
+      + "  -v, --version\n"
+      + "    Write version number to terminal and exit\n";
 
 const opts = getopts(process.argv.slice(2), optParams);
 
