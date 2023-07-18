@@ -53,9 +53,15 @@ var callbacks = {
             fs.writeFileSync(path.join(this.dirs.attachmentsDir, "deletes.txt"), keys.join("\n"));
         },
         add: async function(siteAttachment){
+            var m = siteAttachment.filename.match(/\.(pdf|txt|rtf)$/);
+            var ext = m ? m[1] : "pdf";
+            this.fileExtFromKey[siteAttachment.key] = ext;
             fs.writeFileSync(path.join(this.dirs.attachmentsAdd, siteAttachment.key + ".json"), JSON.stringify(siteAttachment, null, 2));
         },
         mod: async function(siteAttachment){
+            var m = siteAttachment.filename.match(/\.(pdf|txt|rtf)$/);
+            var ext = m ? m[1] : "pdf";
+            this.fileExtFromKey[siteAttachment.key] = ext;
             fs.writeFileSync(path.join(this.dirs.attachmentsMod, siteAttachment.key + ".json"), JSON.stringify(siteAttachment, null, 2));
         }
     },
@@ -74,11 +80,11 @@ var callbacks = {
             }
         },
         exists: async function(key) {
-            var filePath = path.join(this.dirs.files, key + ".pdf");
+            var filePath = path.join(this.dirs.files, key + "." + this.fileExtFromKey[key]);
             return fs.existsSync(filePath);
         },
         add: async function(key, data){
-            var filePath = path.join(this.dirs.files, key + ".pdf");
+            var filePath = path.join(this.dirs.files, key + "." + this.fileExtFromKey[key]);
             fs.writeFileSync(filePath, data);
         }
     }

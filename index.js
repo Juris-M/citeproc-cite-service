@@ -47,6 +47,9 @@ function getConfig(opts, keyCacheJson) {
     } else {
         cfg.styleName = "jm-chicago-fullnote-bibliography.csl";
     }
+
+    cfg.fileExtFromKey = {};
+
     if (!fs.existsSync(cfg.dataPath)) {
         abort("data directory does not exist");
     }
@@ -87,15 +90,21 @@ var Runner = function(opts, callbacks) {
     this.style = getStyle(this.cfg);
 };
 
-Runner.prototype.callAPI = async function(uriStub, isFile, final) {
+Runner.prototype.fileTypeMap = {
+    rtf: "application/rtf",
+    txt: "text/plain",
+    pdf: "application/pdf"
+}
+
+Runner.prototype.callAPI = async function(uriStub, fileType, final) {
     var ret = null;
     var itemsUrl = "https://api.zotero.org/groups/" + this.cfg.access.groupID + uriStub;
     console.log("+ CALL " + itemsUrl);
-    if (isFile) {
+    if (fileType) {
         ret = await superagent.get(itemsUrl)
             .buffer(true)
             .parse(superagent.parse.image)
-            .set("content-type", "application/pdf")
+            .set("content-type", this.fileTypeMap[fileType])
             .set("Authorization", "Bearer " + this.cfg.access.libraryKey);
     } else {
         ret = await superagent.get(itemsUrl).set("content-type", "application/json").set("Authorization", "Bearer " + this.cfg.access.libraryKey);
@@ -374,6 +383,19 @@ Runner.prototype.doAddUpdateItems = async function(updateSpec) {
     }
 }
 
+Runner.prototype.setAttachmentTypeFromName = (name) => {
+    var ret = "pdf";
+    if (name) {
+        var ext = name.slice(-4).toLowerCase();
+	    if (ext == ".rtf") {
+	        ret = "rtf";
+	    } else if (ext == ".txt") {
+	        ret = "txt";
+	    }
+    }
+    return ret;
+}
+
 Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
     var transactionSize = 25;
     //
@@ -385,6 +407,7 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
     console.log(`doAddUpdateAttachments`);
     var filesDir = path.join(this.cfg.dirs.topDir, "files");
     try {
+        var attachmentNameFromKey = {};
         var addSublists = [];
         while (updateSpec.attachments.add.length) {
             addSublists.push(updateSpec.attachments.add.slice(0, transactionSize));
@@ -399,6 +422,7 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
                     this.oldVersions.attachments[attachment.key] = 0;
                 }
                 var siteAttachment = this.buildSiteAttachment(attachment, fulltext);
+		        attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
                 await this.callbacks.attachments.add.call(this.cfg, siteAttachment);
             }
         }
@@ -416,6 +440,7 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
                     this.oldVersions.attachments[attachment.key] = 0;
                 }
                 var siteAttachment = await this.buildSiteAttachment(attachment, fulltext);
+		        attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
                 await this.callbacks.attachments.mod.call(this.cfg, siteAttachment);
             }
         }
@@ -423,7 +448,8 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
         for (var attachmentID of updateSpec.attachments.mod) {
             // Download the file for a modified attachment ID unconditionally if the metadata has changed
             if (this.newVersions[attachmentID] > this.oldVersions[attachmentID]) {
-                var response = await this.callAPI("/items/" + attachmentID + "/file", true);
+	            fileType = this.setAttachmentTypeFromName(attachmentNameFromKey[attachmentID]);
+                var response = await this.callAPI("/items/" + attachmentID + "/file", fileType);
                 await this.callbacks.files.add.call(this.cfg, attachmentID, response.body);
                 attachmentsDone[attachmentID] = true;
             }
@@ -432,7 +458,8 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
             if (attachmentsDone[attachmentID]) continue;
             var attachmentExists = await this.callbacks.files.exists.call(this.cfg, attachmentID);
             if (!attachmentExists) {
-                var response = await this.callAPI("/items/" + attachmentID + "/file", true);
+	            fileType = this.setAttachmentTypeFromName(attachmentNameFromKey[attachmentID]);
+                var response = await this.callAPI("/items/" + attachmentID + "/file", fileType);
                 await this.callbacks.files.add.call(this.cfg, attachmentID, response.body);
             };
         }
