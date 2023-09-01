@@ -460,7 +460,7 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
                     // Triggers mod on next update if item still exists
                     this.oldVersions.attachments[attachment.key] = 0;
                 }
-                var siteAttachment = this.buildSiteAttachment(attachment, fulltext);
+                var siteAttachment = await this.buildSiteAttachment(attachment, fulltext);
 		        attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
                 await this.callbacks.attachments.add.call(this.cfg, siteAttachment);
             }
