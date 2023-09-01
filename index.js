@@ -4,6 +4,10 @@ var path = require("path");
 var fs = require("fs");
 const getopts = require("getopts");
 const superagent = require('superagent');
+const unzipper = require("unzipper");
+const tmp = require("tmp");
+tmp.setGracefulCleanup();
+
 const zoteroToCsl = require('zotero-to-csl');
 const zoteroToJurism = require('zotero2jurismcsl').convert;
 const getStyle = require('./style').getStyle;
@@ -90,21 +94,14 @@ var Runner = function(opts, callbacks) {
     this.style = getStyle(this.cfg);
 };
 
-Runner.prototype.fileTypeMap = {
-    rtf: "application/rtf",
-    txt: "text/plain",
-    pdf: "application/pdf"
-}
-
-Runner.prototype.callAPI = async function(uriStub, fileType, final) {
+Runner.prototype.callAPI = async function(uriStub, isAttachment, final) {
     var ret = null;
     var itemsUrl = "https://api.zotero.org/groups/" + this.cfg.access.groupID + uriStub;
     console.log("+ CALL " + itemsUrl);
-    if (fileType) {
+    if (isAttachment) {
         ret = await superagent.get(itemsUrl)
             .buffer(true)
             .parse(superagent.parse.image)
-            .set("content-type", this.fileTypeMap[fileType])
             .set("Authorization", "Bearer " + this.cfg.access.libraryKey);
     } else {
         ret = await superagent.get(itemsUrl).set("content-type", "application/json").set("Authorization", "Bearer " + this.cfg.access.libraryKey);
@@ -115,11 +112,66 @@ Runner.prototype.callAPI = async function(uriStub, fileType, final) {
         } else {
             var retryAfter = parseInt(ret.header["retry-after"]);
             await sleep(retryAfter);
-            ret = await this.callApi(uriStub, isFile, true);
+            ret = await this.callApi(uriStub, isAttachment, true);
         }
     }
     return ret;
 }
+
+Runner.prototype.getRealBufferAndExt = async function(buf) {
+    var tmpInfo = tmp.dirSync();
+    var filePath = path.join(tmpInfo.name, "myfile");
+    await fs.writeFileSync(filePath, buf)
+    var fileTyper = await import("file-type");
+    var fileInfo = await fileTyper.fileTypeFromFile(filePath);
+	if (fileInfo.mime == "application/zip") {
+        await this.unzip(filePath, tmpInfo.name);
+        for (var fn of fs.readdirSync(tmpInfo.name)) {
+            if (fn === "myfile") continue;
+            var newFilePath = path.join(tmpInfo.name, fn);
+            fileInfo = await fileTyper.fileTypeFromFile(newFilePath);
+            if (!fileInfo) {
+                fileInfo = this.fixFileTypeTxtFail(fileInfo, fn);
+            }
+            buf = fs.readFileSync(newFilePath);
+            break;
+        }
+    }
+    return {
+        fileInfo: fileInfo,
+        buf: buf
+    }
+}
+
+Runner.prototype.fixFileTypeTxtFail = function(fileInfo, fn) {
+    if (!fileInfo) {
+        fileInfo = {
+            ext: "pdf",
+            mime: "application/pdf"
+        }
+        if (fn.slice(-4) === ".txt") {
+            fileInfo.ext = "txt",
+            fileInfo.mime = "text/plain"
+        }
+    }
+    return fileInfo;
+}
+
+Runner.prototype.unzip = async function(filePath, outputPath) {
+    const zip = fs.createReadStream(filePath).pipe(unzipper.Parse({forceStream: true}));
+    for await (const entry of zip) {
+        var done = false;
+        const fileName = entry.path;
+        const type = entry.type; // 'Directory' or 'File'
+        const size = entry.vars.uncompressedSize; // There is also compressedSize;
+        if (!done) {
+            entry.pipe(fs.createWriteStream(path.join(outputPath, fileName)));
+        } else {
+            entry.autodrain();
+        }
+    }
+}
+
 
 Runner.prototype.getVersions = async function(uriStub) {
     var ret = null;
@@ -383,19 +435,6 @@ Runner.prototype.doAddUpdateItems = async function(updateSpec) {
     }
 }
 
-Runner.prototype.setAttachmentTypeFromName = (name) => {
-    var ret = "pdf";
-    if (name) {
-        var ext = name.slice(-4).toLowerCase();
-	    if (ext == ".rtf") {
-	        ret = "rtf";
-	    } else if (ext == ".txt") {
-	        ret = "txt";
-	    }
-    }
-    return ret;
-}
-
 Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
     var transactionSize = 25;
     //
@@ -448,22 +487,25 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
         for (var attachmentID of updateSpec.attachments.mod) {
             // Download the file for a modified attachment ID unconditionally if the metadata has changed
             if (this.newVersions[attachmentID] > this.oldVersions[attachmentID]) {
-	            fileType = this.setAttachmentTypeFromName(attachmentNameFromKey[attachmentID]);
-                var response = await this.callAPI("/items/" + attachmentID + "/file", fileType);
-                await this.callbacks.files.add.call(this.cfg, attachmentID, response.body);
+                // true as second argument expects attachment file content
+                var response = await this.callAPI("/items/" + attachmentID + "/file", true);
+	            var info = await this.getRealBufferAndExt(response.body);
+                await this.callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
                 attachmentsDone[attachmentID] = true;
             }
         };
         for (var attachmentID in this.newVersions.attachments) {
             if (attachmentsDone[attachmentID]) continue;
             var attachmentExists = await this.callbacks.files.exists.call(this.cfg, attachmentID);
-            if (!attachmentExists) {
-	            fileType = this.setAttachmentTypeFromName(attachmentNameFromKey[attachmentID]);
-                var response = await this.callAPI("/items/" + attachmentID + "/file", fileType);
-                await this.callbacks.files.add.call(this.cfg, attachmentID, response.body);
+            if (attachmentExists === false) {
+                // true as second argument expects attachment file content
+                var response = await this.callAPI("/items/" + attachmentID + "/file", true);
+	            var info = await this.getRealBufferAndExt(response.body);
+                await this.callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
             };
         }
-        await this.callbacks.files.purge.call(this.cfg, this.newVersions.attachments);
+        // await this.callbacks.files.purge.call(this.cfg, this.newVersions.attachments);
+        await this.callbacks.files.purge.call(this.cfg, updateSpec.attachments.del);
     } catch (e) {
         handleError(e);
     }

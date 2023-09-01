@@ -53,25 +53,23 @@ var callbacks = {
             fs.writeFileSync(path.join(this.dirs.attachmentsDir, "deletes.txt"), keys.join("\n"));
         },
         add: async function(siteAttachment){
-            var m = siteAttachment.filename.match(/\.(pdf|txt|rtf)$/);
+            var m = siteAttachment.filename.match(/\.(pdf|txt|zip|rtf)$/);
             var ext = m ? m[1] : "pdf";
             this.fileExtFromKey[siteAttachment.key] = ext;
             fs.writeFileSync(path.join(this.dirs.attachmentsAdd, siteAttachment.key + ".json"), JSON.stringify(siteAttachment, null, 2));
         },
         mod: async function(siteAttachment){
-            var m = siteAttachment.filename.match(/\.(pdf|txt|rtf)$/);
+            var m = siteAttachment.filename.match(/\.(pdf|txt|zip|rtf)$/);
             var ext = m ? m[1] : "pdf";
             this.fileExtFromKey[siteAttachment.key] = ext;
             fs.writeFileSync(path.join(this.dirs.attachmentsMod, siteAttachment.key + ".json"), JSON.stringify(siteAttachment, null, 2));
         }
     },
     files: {
-        purge: async function(newKeys){
+        purge: async function(attachmentsDel){
             for (var fn of fs.readdirSync(this.dirs.files)) {
-                // Delete all unneeded attachment files
-                if (fn.slice(-4) !== ".pdf") continue;
-                var key = fn.slice(0, -4);
-                if (!newKeys[key]) {
+                var key = fn.slice(0,8);
+                if (attachmentsDel.indexOf(key) > -1) {
                     var filePath = path.join(this.dirs.files, fn);
                     if (fs.existsSync(filePath)) {
                         fs.unlinkSync(filePath);
@@ -80,11 +78,15 @@ var callbacks = {
             }
         },
         exists: async function(key) {
-            var filePath = path.join(this.dirs.files, key + "." + this.fileExtFromKey[key]);
-            return fs.existsSync(filePath);
+            if (!this.fileExtFromKey[key]) {
+                return null;
+            } else {
+                var filePath = path.join(this.dirs.files, key + "." + this.fileExtFromKey[key]);
+                return fs.existsSync(filePath);
+            }
         },
         add: async function(key, data){
-            var filePath = path.join(this.dirs.files, key + "." + this.fileExtFromKey[key]);
+            var filePath = path.join(this.dirs.files, key + "." + this.fileExtFromKey[key])
             fs.writeFileSync(filePath, data);
         }
     }
