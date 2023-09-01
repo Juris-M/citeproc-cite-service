@@ -1,6 +1,6 @@
 {
     "name": "citeproc-cite-service",
-    "version": "2.1.64",
+    "version": "2.1.65",
     "description": "A limited read-only sync of items and attachments from a Jurism/Zotero library",
     "main": "index.js",
     "scripts": {},
