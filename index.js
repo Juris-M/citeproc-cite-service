@@ -19,6 +19,7 @@ function getConfig(opts, keyCacheJson) {
     } else {
         var dataPath = process.cwd();
     }
+    console.log(`Running with node version ${process.version}`);
     console.log("zsyncdown: using data directory " + dataPath);
     if (opts.i && fs.readdirSync(dataPath).length > 0) {
         abort("the -i option can only be used in an empty data directory");
@@ -254,7 +255,7 @@ Runner.prototype.attachmentDelta = async function() {
     return keyVersions;
 }
 
-Runner.prototype.getUpdateSpec = function(newVersions) {
+Runner.prototype.getUpdateSpec = async function(newVersions) {
     var ret = {
         items: {
             add: [],
@@ -271,7 +272,7 @@ Runner.prototype.getUpdateSpec = function(newVersions) {
     try {
         ret.items = this.versionDeltas(ret.items, this.oldVersions.items, newVersions.items);
         ret.attachments = this.versionDeltas(ret.attachments, this.oldVersions.attachments, newVersions.attachments);
-        ret.files = this.attachmentDelta();
+        ret.files = await this.attachmentDelta();
     } catch (e) {
         handleError(e);
     }
