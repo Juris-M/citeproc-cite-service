@@ -1,11 +1,12 @@
 {
     "name": "citeproc-cite-service",
-    "version": "2.1.62",
+    "version": "2.1.63",
     "description": "A limited read-only sync of items and attachments from a Jurism/Zotero library",
     "main": "index.js",
     "scripts": {},
     "bin": {
-        "zsyncdown": "./index.js"
+        "zsyncdown": "./index.js",
+        "zcleanup": "./cleanup.js"
     },
     "files": [
         "README.md",
@@ -33,11 +34,14 @@
         "citeproc-abbrevs": "^1.1.60",
         "citeproc-juris-modules": "^1.0.41",
         "citeproc-locales": ">=1.0.2",
+        "file-type": "^18.5.0",
         "getopts": "^2.3.0",
         "regenerator-runtime": "^0.13.9",
-        "superagent": "^5.3.1",
+        "superagent": "^8.1.2",
+        "tmp": "^0.2.1",
+        "unzipper": "^0.10.14",
+        "yauzl": "^2.10.0",
         "zotero-to-csl": ">=1.2.0",
         "zotero2jurismcsl": "0.0.12"
-    },
-    "devDependencies": {}
+    }
 }
