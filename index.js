@@ -8,10 +8,22 @@ const unzipper = require("unzipper");
 const tmp = require("tmp");
 tmp.setGracefulCleanup();
 
+const DateParser = require("citeproc").DateParser;
+
 const zoteroToCsl = require('zotero-to-csl');
 const zoteroToJurism = require('zotero2jurismcsl').convert;
 const getStyle = require('./style').getStyle;
 const callbacks = require('./callbacks').callbacks;
+
+// This list does not include CSL-M extended dates.
+const CSL_DATE_VARIABLES = [
+    "accessed",
+    "available-date",
+    "event-date",
+    "issued",
+    "original-date",
+    "submitted"
+];
 
 function getConfig(opts, keyCacheJson) {
     if (opts.d) {
@@ -31,6 +43,7 @@ function getConfig(opts, keyCacheJson) {
             fs.writeFileSync(configFilePath, "// Configuration file for citeproc-cite-service\n// For details, see README.md or https://www.npmjs.com/package/citeproc-cite-service\n" + JSON.stringify({
                 dataPath: dataPath,
                 dataMode: "CSL-M",
+                cslMode: "CSL",
                 access: {
                     groupID: false,
                     libraryKey: false
@@ -316,7 +329,27 @@ Runner.prototype.buildSiteItem = function(item) {
         delete item.version;
         delete item.dateAdded;
         delete item.dateModified;
-        var cslItem = zoteroToCsl(item);
+        var cslItemZotero = zoteroToCsl(item);
+        // Okay. This is ugly. zoteroToCsl straight off npm doesn't
+        // convert string dates to the CSL array form, so we hack in
+        // a fix for those entries here.
+        for (var fieldName of CSL_DATE_VARIABLES) {
+            if ("string" === typeof cslItemZotero[fieldName]) {
+                cslItemZotero[fieldName] = DateParser.parseDateToArray(cslItemZotero[fieldName]);
+            }
+        }
+        
+        // Okay. This is also ugly. zoteroToJurism() modifies the
+        // object in place, as well as returning it as result.
+        // If it is not recomposed here, cslItemZotero will be
+        // unencoded as a side effect.
+        var cslItemJurism = zoteroToJurism({data:item}, JSON.parse(JSON.stringify(cslItemZotero)));
+        var cslItem;
+        if (this.cfg.dataMode === "CSL-M") {
+            cslItem = cslItemJurism;
+        } else {
+            cslItem = cslItemZotero;
+        }
         var relatedItems = [];
         if (item.relations["dc:relation"]) {
             relations = item.relations["dc:relation"];
@@ -325,13 +358,12 @@ Runner.prototype.buildSiteItem = function(item) {
             }
             relatedItems = relations.map(s => s.replace(/^.*\//, ""));
         }
-        if (this.cfg.dataMode === "CSL-M") {
-            cslItem = zoteroToJurism({data:item}, cslItem);
-        }
+        cslItemZotero.id = itemKey;
+        cslItemJurism.id = itemKey;
         cslItem.id = itemKey;
         this.style.sys.items = JSON.parse("{\"" + itemKey + "\": " + JSON.stringify(cslItem) + "}");
         this.style.updateItems([itemKey]);
-        var country = this.extractCountry(cslItem.jurisdiction);
+        var country = this.extractCountry(cslItemJurism.jurisdiction);
     } catch (e) {
         handleError(e);
     }
@@ -341,7 +373,7 @@ Runner.prototype.buildSiteItem = function(item) {
         country: country,
         tags: item.tags,
         relatedItems: relatedItems,
-        cslItem: cslItem
+        cslItem: this.cfg.cslMode === "CSL-M" ? cslItemJurism : cslItemZotero
     }
 }
 
