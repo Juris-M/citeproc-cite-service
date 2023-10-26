@@ -10,6 +10,24 @@ tmp.setGracefulCleanup();
 
 const DateParser = require("citeproc").DateParser;
 
+
+const newUpdateSpec = () => {
+    var template = {
+        items: {
+            add: [],
+            mod: [],
+            del: []
+        },
+        attachments: {
+            add: [],
+            mod: [],
+            del: []
+        },
+        files: []
+    }
+    return JSON.parse(JSON.stringify(template))
+}
+
 const zoteroToCsl = require('zotero-to-csl');
 const zoteroToJurism = require('zotero2jurismcsl').convert;
 const getStyle = require('./style').getStyle;
@@ -269,19 +287,7 @@ Runner.prototype.attachmentDelta = async function() {
 }
 
 Runner.prototype.getUpdateSpec = async function(newVersions) {
-    var ret = {
-        items: {
-            add: [],
-            mod: [],
-            del: []
-        },
-        attachments: {
-            add: [],
-            mod: [],
-            del: []
-        },
-        files: []
-    };
+    var ret = newUpdateSpec();
     try {
         ret.items = this.versionDeltas(ret.items, this.oldVersions.items, newVersions.items);
         ret.attachments = this.versionDeltas(ret.attachments, this.oldVersions.attachments, newVersions.attachments);
@@ -549,37 +555,58 @@ Runner.prototype.run = async function() {
         await this.callbacks.init.call(this.cfg);
         var newVersions = await this.callVersions();
         this.newVersions = newVersions;
-        var updateSpec = await this.getUpdateSpec(newVersions);
-        
-        // Open a DB transaction if required
-        await this.callbacks.openTransaction.call(this.cfg);
-        
-        // Delete things for deletion, beginning with attachments
-        await this.doDeletes(updateSpec);
-        
-        // Works in sets of 50
-        await this.doAddUpdateItems(updateSpec);
 
-        // Works in sets of 25
-        await this.doAddUpdateAttachments(updateSpec);
+        if (this.cfg.opts.c) {
+            var countryTag = `cn:${this.cfg.opts.c.toUpperCase()}`
+            var ret = await this.callAPI("/items?tag=cn:GB", true);
+            var updateSpec = newUpdateSpec();
+            updateSpec.items.mod = JSON.parse(ret.body.toString()).map(o => o.key);
+            if (updateSpec.items.mod.length === 0) {
+                console.log(`There are no entries for country tagged "${countryTag}"`);
+                process.exit();
+            }
 
-        // Close a DB transaction if required
-        await this.callbacks.closeTransaction.call(this.cfg);
+            // Open a DB transaction if required
+            await this.callbacks.openTransaction.call(this.cfg);
+            
+            // Works in sets of 50
+            await this.doAddUpdateItems(updateSpec);
 
-        // Memo current library and item versions
-        this.updateVersionCache(newVersions.library);
+            // Close a DB transaction if required
+            await this.callbacks.closeTransaction.call(this.cfg);
+        } else {
+            var updateSpec = await this.getUpdateSpec(newVersions);
+            
+            // Open a DB transaction if required
+            await this.callbacks.openTransaction.call(this.cfg);
+            
+            // Delete things for deletion, beginning with attachments
+            await this.doDeletes(updateSpec);
+            
+            // Works in sets of 50
+            await this.doAddUpdateItems(updateSpec);
 
-        // Finally, yeet placeholder PDFs if requested
-        if (this.cfg.opts.y) {
-            var filesDir = path.join(this.cfg.dirs.topDir, "files");
-            for (var info of this.emptyPdfInfo) {
-                var filePath = path.join(filesDir, `${info.key}.pdf`);
-                if (fs.existsSync(filePath)) {
-                    console.log(`removing empty placeholder PDF file: ${info.title} [${info.key}]`);
-                    fs.unlinkSync(filePath);
+            // Works in sets of 25
+            await this.doAddUpdateAttachments(updateSpec);
+
+            // Close a DB transaction if required
+            await this.callbacks.closeTransaction.call(this.cfg);
+
+            // Memo current library and item versions
+            this.updateVersionCache(newVersions.library);
+
+            // Finally, yeet placeholder PDFs if requested
+            if (this.cfg.opts.y) {
+                var filesDir = path.join(this.cfg.dirs.topDir, "files");
+                for (var info of this.emptyPdfInfo) {
+                    var filePath = path.join(filesDir, `${info.key}.pdf`);
+                    if (fs.existsSync(filePath)) {
+                        console.log(`removing empty placeholder PDF file: ${info.title} [${info.key}]`);
+                        fs.unlinkSync(filePath);
+                    }
                 }
             }
-        } 
+        }
         console.log("Done!");
     } catch (e) {
         handleError(e);
@@ -591,10 +618,11 @@ const optParams = {
         i: "init",
         d: "data-dir",
         y: "yeet-placeholder-pdfs",
+        c: "country",
         v: "version",
         h: "help"
     },
-    string: ["d"],
+    string: ["d", "c"],
     boolean: ["h", "i", "y", "v"],
     unknown: option => {
         abort("unknown option \"" +option + "\"");
@@ -608,6 +636,10 @@ const usage = "Usage: " + path.basename(process.argv[1]) + " [options]\n"
       + "    Absolute path to a citeproc-cite-service data directory.\n"
       + "  -y, --yeet-placeholder-pdfs\n"
       + "    Skip placeholder PDF files included in the download\n"
+      + "  -c, --country\n"
+      + "    Force metadata update ONLY for items tagged with specified\n"
+      + "    two-character country code (Be sure that synced content is\n"
+      + "    up to date before using this option)\n"
       + "  -v, --version\n"
       + "    Write version number to terminal and exit\n";
 
