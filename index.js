@@ -352,12 +352,8 @@ Runner.prototype.buildSiteItem = function(item) {
         // If it is not recomposed here, cslItemZotero will be
         // unencoded as a side effect.
         var cslItemJurism = zoteroToJurism({data:item}, JSON.parse(JSON.stringify(cslItemZotero)));
-        var cslItem;
-        if (this.cfg.cslMode === "CSL-M") {
-            cslItem = cslItemJurism;
-        } else {
-            cslItem = cslItemZotero;
-        }
+        var cslItem = cslItemJurism;
+        var cslJsonItem = cslItemZotero;
         var relatedItems = [];
         if (item.relations["dc:relation"]) {
             relations = item.relations["dc:relation"];
@@ -378,13 +374,13 @@ Runner.prototype.buildSiteItem = function(item) {
     var citation = this.style.makeCitationCluster([{"id":itemKey}]);
     console.log(`citation: ${citation}`);
     if (relatedItems.length === 0) {
-        delete cslItem.id;
+        delete cslJsonItem.id;
     }
-    delete cslItem["abstract"];
-    if (cslItem.note.match(/^mlzsync1:[0-9]{4}/)) {
-        var extraDataStrLen = parseInt(cslItem.note.slice(9, 13), 10);
-        var extraDataStr = cslItem.note.slice(13, 13 + extraDataStrLen);
-        cslItem.note = cslItem.note.slice(13 + extraDataStrLen);
+    delete cslJsonItem["abstract"];
+    if (cslJsonItem.note.match(/^mlzsync1:[0-9]{4}/)) {
+        var extraDataStrLen = parseInt(cslJsonItem.note.slice(9, 13), 10);
+        var extraDataStr = cslJsonItem.note.slice(13, 13 + extraDataStrLen);
+        cslJsonItem.note = cslJsonItem.note.slice(13 + extraDataStrLen);
         var extraData = JSON.parse(extraDataStr);
         delete extraData.extrafields.callNumber;
         extraDataStr = JSON.stringify(extraData);
@@ -392,7 +388,7 @@ Runner.prototype.buildSiteItem = function(item) {
         while (extraDataStrLen.length < 4) {
             extraDataStrLen = "0" + extraDataStrLen;
         }
-        cslItem.note = `mlzsync1:${extraDataStrLen}${extraDataStr}${cslItem.note}`;
+        cslJsonItem.note = `mlzsync1:${extraDataStrLen}${extraDataStr}${cslJsonItem.note}`;
     }
     return {
         key: itemKey,
@@ -400,7 +396,8 @@ Runner.prototype.buildSiteItem = function(item) {
         country: country,
         tags: item.tags,
         relatedItems: relatedItems,
-        cslItem: cslItem
+        cslItem: cslItem,
+        cslJsonItem: cslJsonItem
     }
 }
 
