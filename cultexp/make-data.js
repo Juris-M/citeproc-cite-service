@@ -3,6 +3,14 @@ const fs = require("fs");
 const path = require("path");
 const getopts = require("getopts");
 
+/*
+ * GOOD MORNING!
+ * Currently setting up to feed callNumber IDs in as comma-delimited
+ * option. It should use a file with a list of IDs instead. Reconfigure
+ * option as a boolean that prompts loading of a config file with a
+ * standard name, and complains if it doesn't exist.
+ */
+
 var csvparse
 try {
     csvparse = require("csv-parse/sync");
@@ -85,6 +93,29 @@ const setupConfig = (opts) => {
     
     config.courtHintFilePath = path.join(".", "court-code-map.json");
     config.createCourtHintFile = false;
+
+    if (config.opts.u) {
+        var fpth = path.join(".", "useDocsOnItems.txt")
+        // Check for existence of useDocsOnItems.txt file.
+        if (!fs.existsSync(fpth)) {
+            handleError("File ./useDocsOnItems.txt does not exist");
+        }
+        // Load file
+        var str = fs.readFileSync(fpth).toString();    
+        // Split on newline to form an array
+        // Stash array on config.useDocsOnItems
+        // Truncate to base callNumber ID
+        var arr = str.trim().split("\n").map(o => o.trim().slice(0, 5));
+        // Remove duplicates
+        arr.sort();
+        for (var i=arr.length-1; i>0; i--) {
+            if (arr[i] === arr[i-1]) {
+                arr = arr.slice(0, i-1).concat(arr.slice(i));
+            }
+        }
+        config.useDocsOnItems = arr;
+        console.log(JSON.stringify(arr, null, 2));
+    }
 
     console.log(`Running with data file stub: ${config.fileNameStub}`);
     return config;
@@ -490,39 +521,50 @@ function addAttachment(config, line) {
         note = markdown.render(note);
     }
     var attachments = [];
-    var fn = `${fileCode}.pdf`;
+    var fns = [`${fileCode}.pdf`];
     if (!fs.existsSync(filesPath(fn))) {
-        fn = "empty.pdf";
+        // fns = ["empty.pdf"];
+        fns = [];
     }
-    var suffix = fileCode.slice(5).replace(/ER[a-z]?$/, "");
-    var reportflag = fileCode.slice(5).replace(/.*(ER[a-z]?)$/, "$1");
-    // Root filename suffixes in this jurisdiction:
-    // A
-    // B
-    // C
-    // D
-    // ER
-    // ERa
-    // ERb
-    if (!reportflag) {
-        if (!suffix | ["A", "B", "C", "D"].indexOf(suffix) > -1) {
+    // Extended on 2023-11-05 to include RTF and TXT files
+    // with the same file code.
+    for (var ext of ["rtf", "txt"]) {
+	    fn = `${fileCode}.${ext}`;
+        if (fs.existsSync(filesPath(fn))) {
+	        fns.push(fn);
+	    }
+    }
+    for (var fn of fns) {
+        var suffix = fileCode.slice(5).replace(/ER[a-z]?$/, "");
+        var reportflag = fileCode.slice(5).replace(/.*(ER[a-z]?)$/, "$1");
+        // Root filename suffixes in this jurisdiction:
+        // A
+        // B
+        // C
+        // D
+        // ER
+        // ERa
+        // ERb
+        if (!reportflag) {
+            if (!suffix | ["A", "B", "C", "D"].indexOf(suffix) > -1) {
+                attachments.push({
+                    path: filesPath(fn),
+                    title: fn,
+                    tags: [`LN:${config.defaultJurisdiction}`, "TY:judgment"]
+                });
+            } else {
+                console.log(`  Oops on suffix="${suffix}" from line.id="${line.id}"`);
+                process.exit();
+            }
+        }
+        if (reportflag.slice(0, 2) === "ER") {
             attachments.push({
                 path: filesPath(fn),
-                title: `${fileCode}.pdf`,
-                tags: [`LN:${config.defaultJurisdiction}`, "TY:judgment"]
+                title: fn,
+                note: note,
+                tags: [`LN:${config.defaultJurisdiction}`, "TY:report"]
             });
-        } else {
-            console.log(`  Oops on suffix="${suffix}" from line.id="${line.id}"`);
-            process.exit();
         }
-    }
-    if (reportflag.slice(0, 2) === "ER") {
-        attachments.push({
-            path: filesPath(fn),
-            title: `${fileCode}.pdf`,
-            note: note,
-            tags: [`LN:${config.defaultJurisdiction}`, "TY:report"]
-        });
     }
     return {
         attachments: attachments,
@@ -591,6 +633,11 @@ function composeItem(config, line, suppressAbstract) {
     // item["number"] = number;
     var info = addAttachment(config, line);
     info.tags.push(`cn:${config.defaultJurisdiction.toUpperCase()}`);
+    if (config.opts.u) {
+        if (config.useDocsOnItems.indexOf(item["call-number"]) > -1) {
+            info.tags.push("showDocs");
+        }
+    }
     item["attachments"] = info.attachments;
     item["tags"] = getTags(line, info.tags);
     return item;
@@ -787,7 +834,8 @@ function run(opts) {
                 }
                 
                 // Okay. Here we create the CSL import object
-                var filePath = filesPath(`${line.id}.pdf`);
+		// Actually, this line is unused.
+                // var filePath = filesPath(`${line.id}.pdf`);
 
                 if (acc[rootID]) {
                     // console.log(`  Adding attachment for ${line.id} on ${rootID}`);
@@ -842,13 +890,14 @@ if (require.main === module) {
         alias: {
             L : "lstripto",
             N : "no-jurisdiction-no-court",
+            u : "use-docs-on-items",
             q : "quiet",
             Q : "Quiet",
             v : "version",
             h: "help"
         },
         string: ["L"],
-        boolean: ["N", "q", "Q", "h"],
+        boolean: ["N", "u", "q", "Q", "h"],
         unknown: option => {
             console.log("make-data error: unknown option \"" +option + "\"");
             process.exit();
@@ -860,6 +909,10 @@ if (require.main === module) {
       + "    Remove text from left of number field to designated string.\n"
       + "  -N, --no-jurisdiction-no-court\n"
       + "    If jurisdiction field is empty, set court field to empty also.\n"
+      + "  -u, --use-docs-on-items\n"
+      + "    Load callNumber values for items that should\n"
+      + "    receive a showDocs tag from a file useDocsOnItems.txt,\n"
+      + "    which must exist.\n"
       + "  -q, --quiet\n"
       + "    Suppress only empty-court warnings.\n"
       + "  -Q, --Quiet\n"
