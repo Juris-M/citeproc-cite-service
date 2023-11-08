@@ -79,8 +79,10 @@ function getConfig(opts, keyCacheJson) {
         abort("dataMode must be set to \"CSL\" or \"CSL-M\" in " + configFilePath);
     }
     if (cfg.dataMode === "CSL") {
+        console.log("Using Zotero style");
         cfg.styleName = "chicago-fullnote-bibliography.csl";
     } else {
+        console.log("Using Jurism style");
         cfg.styleName = "jm-chicago-fullnote-bibliography.csl";
     }
 
@@ -204,7 +206,6 @@ Runner.prototype.unzip = async function(filePath, outputPath) {
     }
 }
 
-
 Runner.prototype.getVersions = async function(uriStub) {
     var ret = null;
     try {
@@ -290,6 +291,7 @@ Runner.prototype.getUpdateSpec = async function(newVersions) {
     var ret = newUpdateSpec();
     try {
         ret.items = this.versionDeltas(ret.items, this.oldVersions.items, newVersions.items);
+        console.log("ATTACHMENT getUpdateSpec");
         ret.attachments = this.versionDeltas(ret.attachments, this.oldVersions.attachments, newVersions.attachments);
         ret.files = await this.attachmentDelta();
     } catch (e) {
@@ -351,7 +353,7 @@ Runner.prototype.buildSiteItem = function(item) {
         // unencoded as a side effect.
         var cslItemJurism = zoteroToJurism({data:item}, JSON.parse(JSON.stringify(cslItemZotero)));
         var cslItem;
-        if (this.cfg.dataMode === "CSL-M") {
+        if (this.cfg.cslMode === "CSL-M") {
             cslItem = cslItemJurism;
         } else {
             cslItem = cslItemZotero;
@@ -367,19 +369,38 @@ Runner.prototype.buildSiteItem = function(item) {
         cslItemZotero.id = itemKey;
         cslItemJurism.id = itemKey;
         cslItem.id = itemKey;
-        this.style.sys.items = JSON.parse("{\"" + itemKey + "\": " + JSON.stringify(cslItem) + "}");
+        this.style.sys.items = JSON.parse("{\"" + itemKey + "\": " + JSON.stringify(cslItemJurism) + "}");
         this.style.updateItems([itemKey]);
         var country = this.extractCountry(cslItemJurism.jurisdiction);
     } catch (e) {
         handleError(e);
     }
+    var citation = this.style.makeCitationCluster([{"id":itemKey}]);
+    console.log(`citation: ${citation}`);
+    if (relatedItems.length === 0) {
+        delete cslItem.id;
+    }
+    delete cslItem["abstract"];
+    if (cslItem.note.match(/^mlzsync1:[0-9]{4}/)) {
+        var extraDataStrLen = parseInt(cslItem.note.slice(9, 13), 10);
+        var extraDataStr = cslItem.note.slice(13, 13 + extraDataStrLen);
+        cslItem.note = cslItem.note.slice(13 + extraDataStrLen);
+        var extraData = JSON.parse(extraDataStr);
+        delete extraData.extrafields.callNumber;
+        extraDataStr = JSON.stringify(extraData);
+        extraDataStrLen = extraDataStr.length + "";
+        while (extraDataStrLen.length < 4) {
+            extraDataStrLen = "0" + extraDataStrLen;
+        }
+        cslItem.note = `mlzsync1:${extraDataStrLen}${extraDataStr}${cslItem.note}`;
+    }
     return {
         key: itemKey,
-        citation: this.style.makeCitationCluster([{"id":itemKey}]),
+        citation: citation,
         country: country,
         tags: item.tags,
         relatedItems: relatedItems,
-        cslItem: this.cfg.cslMode === "CSL-M" ? cslItemJurism : cslItemZotero
+        cslItem: cslItem
     }
 }
 
@@ -387,6 +408,7 @@ Runner.prototype.buildSiteAttachment = function(attachment, fulltext){
     var language = this.extractTag(attachment.tags, "LN:", "en");
     var type = this.extractTag(attachment.tags, "TY:", false);
     var ocr = this.extractTag(attachment.tags, "OCR:", false);
+
     this.oldVersions.attachments[attachment.key] = attachment.version;
     if (this.cfg.opts.y) {
         if (attachment.filename === "empty.pdf") {
@@ -444,6 +466,7 @@ Runner.prototype.doDeletes = async function(updateSpec) {
 
 Runner.prototype.doAddUpdateItems = async function(updateSpec) {
     var transactionSize = 50;
+    console.log(`doAddUpdateItems`);
     try {
         var addSublists = [];
         while (updateSpec.items.add.length) {
@@ -556,54 +579,34 @@ Runner.prototype.run = async function() {
         var newVersions = await this.callVersions();
         this.newVersions = newVersions;
 
-        if (this.cfg.opts.c) {
-            var countryTag = `cn:${this.cfg.opts.c.toUpperCase()}`
-            var ret = await this.callAPI("/items?tag=cn:GB", true);
-            var updateSpec = newUpdateSpec();
-            updateSpec.items.mod = JSON.parse(ret.body.toString()).map(o => o.key);
-            if (updateSpec.items.mod.length === 0) {
-                console.log(`There are no entries for country tagged "${countryTag}"`);
-                process.exit();
-            }
+        var updateSpec = await this.getUpdateSpec(newVersions);
 
-            // Open a DB transaction if required
-            await this.callbacks.openTransaction.call(this.cfg);
-            
-            // Works in sets of 50
-            await this.doAddUpdateItems(updateSpec);
+        // Open a DB transaction if required
+        await this.callbacks.openTransaction.call(this.cfg);
+        
+        // Delete things for deletion, beginning with attachments
+        await this.doDeletes(updateSpec);
+        
+        // Works in sets of 50
+        await this.doAddUpdateItems(updateSpec);
 
-            // Close a DB transaction if required
-            await this.callbacks.closeTransaction.call(this.cfg);
-        } else {
-            var updateSpec = await this.getUpdateSpec(newVersions);
-            
-            // Open a DB transaction if required
-            await this.callbacks.openTransaction.call(this.cfg);
-            
-            // Delete things for deletion, beginning with attachments
-            await this.doDeletes(updateSpec);
-            
-            // Works in sets of 50
-            await this.doAddUpdateItems(updateSpec);
+        // Works in sets of 25
+        await this.doAddUpdateAttachments(updateSpec);
 
-            // Works in sets of 25
-            await this.doAddUpdateAttachments(updateSpec);
+        // Close a DB transaction if required
+        await this.callbacks.closeTransaction.call(this.cfg);
 
-            // Close a DB transaction if required
-            await this.callbacks.closeTransaction.call(this.cfg);
+        // Memo current library and item versions
+        this.updateVersionCache(newVersions.library);
 
-            // Memo current library and item versions
-            this.updateVersionCache(newVersions.library);
-
-            // Finally, yeet placeholder PDFs if requested
-            if (this.cfg.opts.y) {
-                var filesDir = path.join(this.cfg.dirs.topDir, "files");
-                for (var info of this.emptyPdfInfo) {
-                    var filePath = path.join(filesDir, `${info.key}.pdf`);
-                    if (fs.existsSync(filePath)) {
-                        console.log(`removing empty placeholder PDF file: ${info.title} [${info.key}]`);
-                        fs.unlinkSync(filePath);
-                    }
+        // Finally, yeet placeholder PDFs if requested
+        if (this.cfg.opts.y) {
+            var filesDir = path.join(this.cfg.dirs.topDir, "files");
+            for (var info of this.emptyPdfInfo) {
+                var filePath = path.join(filesDir, `${info.key}.pdf`);
+                if (fs.existsSync(filePath)) {
+                    console.log(`removing empty placeholder PDF file: ${info.title} [${info.key}]`);
+                    fs.unlinkSync(filePath);
                 }
             }
         }
@@ -618,11 +621,10 @@ const optParams = {
         i: "init",
         d: "data-dir",
         y: "yeet-placeholder-pdfs",
-        c: "country",
         v: "version",
         h: "help"
     },
-    string: ["d", "c"],
+    string: ["d"],
     boolean: ["h", "i", "y", "v"],
     unknown: option => {
         abort("unknown option \"" +option + "\"");
@@ -636,10 +638,6 @@ const usage = "Usage: " + path.basename(process.argv[1]) + " [options]\n"
       + "    Absolute path to a citeproc-cite-service data directory.\n"
       + "  -y, --yeet-placeholder-pdfs\n"
       + "    Skip placeholder PDF files included in the download\n"
-      + "  -c, --country\n"
-      + "    Force metadata update ONLY for items tagged with specified\n"
-      + "    two-character country code (Be sure that synced content is\n"
-      + "    up to date before using this option)\n"
       + "  -v, --version\n"
       + "    Write version number to terminal and exit\n";
 
