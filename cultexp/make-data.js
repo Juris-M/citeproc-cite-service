@@ -521,7 +521,8 @@ function addAttachment(config, line) {
         note = markdown.render(note);
     }
     var attachments = [];
-    var fns = [`${fileCode}.pdf`];
+    var fn = `${fileCode}.pdf`;
+    var fns = [fn];
     if (!fs.existsSync(filesPath(fn))) {
         // fns = ["empty.pdf"];
         fns = [];
