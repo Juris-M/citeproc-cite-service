@@ -64,9 +64,11 @@ For initial testing, copy the file `callbacks-sample.js` to `callbacks.js`:
     bash> cp callbacks-sample.js callbacks.js
 ```
 
-The sample callbacks file contains functions that will write synced data
-into a file hierarchy. The functions can be adapted, for example to
-write sync updates directly into a local database.
+For purposes of illustration, the sample `callbacks-sample.js` file
+contains functions that will write the data necessary to sync local
+data with a Zotero library into a file hierarchy. The functions *can
+and should* be adapted to apply changes directly to the local data
+store that is to be synced.
 
 
 ## Initializing the sync directory
