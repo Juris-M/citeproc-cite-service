@@ -18,15 +18,6 @@ const markdown = require('markdown-it')({
 });
 
 /*
- Error handling
-*/
-
-function handleError(err) {
-    console.log(err);
-    process.exit(1);
-}
-
-/*
  Initial validation
  */
 const validateDataFile = () => {
@@ -69,7 +60,12 @@ const setupConfig = (opts) => {
 
     // Validate variables in config and set
     var configSource = JSON.parse(fs.readFileSync(configPath));
-
+    
+    if (configSource.jurisdictionCode === "xx") {
+        console.log("Error: set appropriate values in make-data-config.json");
+        process.exit();
+    }
+    
     config.defaultJurisdiction = configSource.jurisdictionCode;
     config.fileNameStub = `data-${configSource.jurisdictionName.replace(/\s/g, "-").toLowerCase()}`;
     config.jurisdictionDescMapPath = `${configSource.jurisdictionDescPath.replace(/\/$/, "")}/juris-${config.defaultJurisdiction}-desc.json`;
