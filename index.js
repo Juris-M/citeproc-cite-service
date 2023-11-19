@@ -91,11 +91,6 @@ function getConfig(opts, keyCacheJson) {
     if (!fs.existsSync(cfg.dataPath)) {
         abort("data directory does not exist");
     }
-    var styleCslTargetPath = path.join(dataPath, cfg.styleName);
-    if (!fs.existsSync(styleCslTargetPath)) {
-        var styleCslSourcePath = path.join(__dirname, cfg.styleName);
-        fs.copyFileSync(styleCslSourcePath, styleCslTargetPath);
-    }
     var keyCacheFile = path.join(cfg.dataPath, keyCacheJson);
     if (!fs.existsSync(keyCacheFile)) {
         fs.writeFileSync(keyCacheFile, JSON.stringify({library:0,items:{},attachments:{}}, null, 2));
@@ -274,26 +269,12 @@ Runner.prototype.versionDeltas = function(ret, oldVersions, newVersions) {
     return ret;
 }
 
-Runner.prototype.attachmentDelta = async function() {
-    var ret = null;
-    var keyVersions = null;
-    try {
-        var uriStub = "/fulltext?since=" + this.oldVersions.library;
-        ret = await this.callAPI(uriStub);
-        var keyVersions = JSON.parse(ret.text);
-    } catch (e) {
-        handleError(e);
-    }
-    return keyVersions;
-}
-
 Runner.prototype.getUpdateSpec = async function(newVersions) {
     var ret = newUpdateSpec();
     try {
         ret.items = this.versionDeltas(ret.items, this.oldVersions.items, newVersions.items);
         console.log("ATTACHMENT getUpdateSpec");
         ret.attachments = this.versionDeltas(ret.attachments, this.oldVersions.attachments, newVersions.attachments);
-        ret.files = await this.attachmentDelta();
     } catch (e) {
         handleError(e);
     }
@@ -563,7 +544,6 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
                 await this.callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
             };
         }
-        // await this.callbacks.files.purge.call(this.cfg, this.newVersions.attachments);
         await this.callbacks.files.purge.call(this.cfg, updateSpec.attachments.del);
     } catch (e) {
         handleError(e);
