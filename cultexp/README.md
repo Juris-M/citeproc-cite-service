@@ -3,23 +3,52 @@
 
 Acknowledgement
 ---------------
-Juris-M/citeproc-cite-service was developed by Frank Bennett and is a primary output of EURO-EXPERT (n.161814) funded by the European Research Council.
+Juris-M/citeproc-cite-service was developed by Frank Bennett and is a
+primary output of EURO-EXPERT (n.161814) funded by the European
+Research Council.
 
 Introduction
 ------------
 
-In the CULTEXP project, the citation details of cases of interest from each target jurisdiction are written into a spreadsheet, and coded to one or more documents (judgments, expert reports) as appropriate. Spreadsheets have between ten and seventeen columns from a standard schema, with standard headings. [1]
+In the CULTEXP project, the citation details of cases of interest from
+each target jurisdiction are written into a spreadsheet, and coded to
+one or more documents (judgments, expert reports) as
+appropriate. Spreadsheets have between ten and seventeen columns from
+a standard schema, with standard headings. [1]
 
-Spreadsheets are then processed using the script documented here, to build a file in a specific format (CSL-JSON) that can be imported into a Jurism client and synced to the cloud service at `zotero.org`. Data is then fetched from the Zotero API and published to a front-end service for public consumption.
+Spreadsheets are then processed using the script documented here, to
+build a file in a specific format (CSL-JSON) that can be imported into
+a Jurism client and synced to the cloud service at `zotero.org`. Data
+is then fetched from the Zotero API and published to a front-end
+service for public consumption.
 
-The workflow for adding records to the CULTEXP database thus involves four steps for each jurisdiction:
+Because the spreadsheet data model does not provide a record of the
+version level of individual lines or cells, the entire spreadsheet
+(typically containing all records for a single jurisdiction) is
+treated as a unit for purposes of adding, and for editing, content.
 
-1.  Preparation of a spreadsheet with entries for each document or case to be added to the database;
-2.  Generation of a well-structured CSL-JSON file for Jurism/Zotero import based on the spreadsheet entries;
-3.  Import of the CSL-JSON data into a Jurism client, and syncing of the data to the `zotero.org` cloud server;
-4.  Pulling of data to the CULTEXP front-end server via the `zotero.org` API.
+The following are the steps needed to provide new *or modified*
+content to the front-end service:
 
-Steps (2) and (3) are explained below.
+1.  Prepare (or edit) an Excel spreadsheet with the appropriate
+    columns, with an entry for each document or case to be added;
+2.  Save the file, and also save it in CSV format;
+3.  Prepare a set of files named to correspond to CultExp document
+    codes;
+4.  Use the `make-data` script documented here to generate a CSL JSON
+    file (`import-me.json`);
+5.  In the Jurism client library, move all items tagged for the jurisdiction to be
+    updated to trash;
+6.  Empty the Jurism client library trash;
+7.  Import the CSL JSON data into the Jurism client library;
+8.  Sync the client library to `zotero.org`;
+9.  Run the `zsyncdown` script (documented in the top-level README of
+    this repository);
+10. Perform whatever operations are necessary to move retrieved data
+    to the front-end service.
+
+Note that this full set of operations is required for *any* change
+to item content.
 
 Installing `node` and `npm`
 ---------------------------
