@@ -3,14 +3,6 @@ const fs = require("fs");
 const path = require("path");
 const getopts = require("getopts");
 
-/*
- * GOOD MORNING!
- * Currently setting up to feed callNumber IDs in as comma-delimited
- * option. It should use a file with a list of IDs instead. Reconfigure
- * option as a boolean that prompts loading of a config file with a
- * standard name, and complains if it doesn't exist.
- */
-
 var csvparse
 try {
     csvparse = require("csv-parse/sync");
@@ -94,17 +86,12 @@ const setupConfig = (opts) => {
     config.courtHintFilePath = path.join(".", "court-code-map.json");
     config.createCourtHintFile = false;
 
-    if (config.opts.u) {
-        var fpth = path.join(".", "useDocsOnItems.txt")
-        // Check for existence of useDocsOnItems.txt file.
-        if (!fs.existsSync(fpth)) {
-            handleError("File ./useDocsOnItems.txt does not exist");
-        }
+    // Enable showDocs tag on selected items if appropriate
+    var fpth = path.join(".", "useDocsOnItems.txt")
+    if (fs.existsSync(fpth)) {
+        console.log("Loading showDocs tag items from useDocsOnItems.txt");
         // Load file
         var str = fs.readFileSync(fpth).toString();    
-        // Split on newline to form an array
-        // Stash array on config.useDocsOnItems
-        // Truncate to base callNumber ID
         var arr = str.trim().split("\n").map(o => o.trim().slice(0, 5));
         // Remove duplicates
         arr.sort();
@@ -114,9 +101,7 @@ const setupConfig = (opts) => {
             }
         }
         config.useDocsOnItems = arr;
-        console.log(JSON.stringify(arr, null, 2));
     }
-
     console.log(`Running with data file stub: ${config.fileNameStub}`);
     return config;
 }
@@ -634,7 +619,7 @@ function composeItem(config, line, suppressAbstract) {
     // item["number"] = number;
     var info = addAttachment(config, line);
     info.tags.push(`cn:${config.defaultJurisdiction.toUpperCase()}`);
-    if (config.opts.u) {
+    if (config.useDocsOnItems) {
         if (config.useDocsOnItems.indexOf(item["call-number"]) > -1) {
             info.tags.push("showDocs");
         }
@@ -891,14 +876,13 @@ if (require.main === module) {
         alias: {
             L : "lstripto",
             N : "no-jurisdiction-no-court",
-            u : "use-docs-on-items",
             q : "quiet",
             Q : "Quiet",
             v : "version",
             h: "help"
         },
         string: ["L"],
-        boolean: ["N", "u", "q", "Q", "h"],
+        boolean: ["N", "q", "Q", "h"],
         unknown: option => {
             console.log("make-data error: unknown option \"" +option + "\"");
             process.exit();
@@ -910,10 +894,6 @@ if (require.main === module) {
       + "    Remove text from left of number field to designated string.\n"
       + "  -N, --no-jurisdiction-no-court\n"
       + "    If jurisdiction field is empty, set court field to empty also.\n"
-      + "  -u, --use-docs-on-items\n"
-      + "    Load callNumber values for items that should\n"
-      + "    receive a showDocs tag from a file useDocsOnItems.txt,\n"
-      + "    which must exist.\n"
       + "  -q, --quiet\n"
       + "    Suppress only empty-court warnings.\n"
       + "  -Q, --Quiet\n"
@@ -921,7 +901,12 @@ if (require.main === module) {
       + "  -v, --version\n"
       + "    Show script version..\n"
       + "  -h, --help\n"
-      + "    This help.\n";
+      + "    This help.\n"
+      + "To add a \"showDocs\" tag to selected items, place a file\n"
+      + "\"useDocsOnItems.txt\" file in the directory with the spreadsheet\n"
+      + "for this jurisdiction. The file should contain a newline-delimited\n"
+      + "list of CultExp document codes. The tag will be applied to the\n"
+      + "parent item of the relevant document attachments.\n"
 
     const opts = getopts(process.argv.slice(2), optParams);
 
