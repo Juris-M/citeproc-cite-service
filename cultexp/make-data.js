@@ -413,7 +413,7 @@ const setCourt = (config, line) => {
     }
     if (config.courtHintMapEmpty && !config.jurisObj[config.defaultJurisdiction].courts[line.court]) {
         if (config.courtHintMap.map(o => o[0]).indexOf(str) === -1) {
-            config.courtHintMap.push([str, str]);
+            config.courtHintMap.push([str, ""]);
         }
     }
 }
@@ -847,11 +847,18 @@ function run(opts) {
             ret.push(acc[id]);
         }
 
-        if (config.createCourtJurisdictionMapFile) {
-            fs.writeFileSync(config.courtJurisdictionMapFilePath, JSON.stringify(config.courtJurisdictionCodeMap, null, 2));
-        }
         if (config.createCourtHintFile) {
             fs.writeFileSync(config.courtHintFilePath, JSON.stringify(config.courtHintMap, null, 2));
+        }
+        for (var info of config.courtHintMap) {
+            // Abort if any court hints are still pending
+            if (info[1] === "") {
+                console.log("INTERRUPTED: One or more courts are unmapped in court-code-map.json");
+                process.exit();
+            }
+        }
+        if (config.createCourtJurisdictionMapFile) {
+            fs.writeFileSync(config.courtJurisdictionMapFilePath, JSON.stringify(config.courtJurisdictionCodeMap, null, 2));
         }
         fs.writeFileSync(path.join(".", "import-me.json"), JSON.stringify(ret, null, 2));
         
