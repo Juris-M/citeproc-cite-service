@@ -10,7 +10,7 @@ Research Council.
 Introduction
 ------------
 
-In the CULTEXP project, the citation details of cases of interest from
+In the CultExp project, the citation details of cases of interest from
 each target jurisdiction are written into a spreadsheet, and coded to
 one or more documents (judgments, expert reports) as
 appropriate. Spreadsheets have between ten and seventeen columns from
@@ -25,7 +25,8 @@ service for public consumption.
 Because the spreadsheet data model does not provide a record of the
 version level of individual lines or cells, the entire spreadsheet
 (typically containing all records for a single jurisdiction) is
-treated as a unit for purposes of adding, and for editing, content.
+treated as a unit for purposes of adding, and for editing, any content
+to be published to the front end.
 
 The following are the steps needed to provide new *or modified*
 content to the front-end service:
@@ -34,9 +35,11 @@ content to the front-end service:
     columns, with an entry for each document or case to be added;
 2.  Save the file, and also save it in CSV format;
 3.  Prepare a set of files named to correspond to CultExp document
-    codes;
+    codes and place them in a ``files`` subdirectory immediately
+    below the CSV file to be processed;
 4.  Use the `make-data` script documented here to generate a CSL JSON
-    file (`import-me.json`);
+    file (`import-me.json`), making amendments to the two ``court-*``
+    configuration files as necessary to avoid runtime errors;
 5.  In the Jurism client library, move all items tagged for the jurisdiction to be
     updated to trash;
 6.  Empty the Jurism client library trash;
@@ -44,8 +47,7 @@ content to the front-end service:
 8.  Sync the client library to `zotero.org`;
 9.  Run the `zsyncdown` script (documented in the top-level README of
     this repository);
-10. Perform whatever operations are necessary to move retrieved data
-    to the front-end service.
+10. Perform whatever incantations are used to move retrieved data to the front-end service.
 
 Note that this full set of operations is required for *any* change
 to item content.
@@ -53,7 +55,7 @@ to item content.
 Installing `node` and `npm`
 ---------------------------
 
-The `make-data` conversion tool is a `node` script, so `node` must be installed on the system where CULTEXP spreadsheet data is to be processed. `Node` is available for free installation:
+The `make-data` conversion tool is a `node` script, so `node` must be installed on the system where CULTEXP spreadsheet data is to be processed. `Node` is available for free installation. Use a recent version.
 
 [<https://nodejs.org/en/>](https://nodejs.org/en/)
 ==================================================
@@ -61,7 +63,7 @@ The `make-data` conversion tool is a `node` script, so `node` must be installed 
 Installing the `make-data` script
 ---------------------------------
 
-To install the `make-data` script, using the command line clone this repository to the target system. Then enter its `cultexp` subdirectory, install the script's dependencies, and link the script to your profile:
+To install the `make-data` script using the command line clone this repository to the target system. Then enter its `cultexp` subdirectory, install the script's dependencies, and link the script to your profile:
 
 ``` example
 $> git clone https://github.com/Juris-M/citeproc-cite-service.git
@@ -85,7 +87,7 @@ Setting up a jurisdiction
 
 To process a jurisdiction, create an empty directory and place the spreadsheet in it, saving the case listing in CSV format. Also (important!) copy all of the PDF attachment files for the jurisdiction into a single subdirectory named `files`.
 
-**A note on dates:** When saving from Excel in CSV format, dates should be set to a numeric form, as "YYYY-MM-DD." With other date formats, the `make-data` script will throw errors and warnings.
+**A note on dates:** When saving from Excel in CSV format, dates should be set to a numeric form, as "YYYY-MM-DD." With other date formats, the `make-data` script will almost certainly throw errors.
 
 Enter the directory and run the command `make-data`:
 
