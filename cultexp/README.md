@@ -72,6 +72,30 @@ $> npm install
 $> npm link
 ```
 
+Pretty-printed code documentation
+---------------------------------
+Comments to the code of the ``make-data`` script are in JSDoc
+format. To generate an HTML view of the code, issue the command ``npm run doc`` in the ``cultexp`` repo directory:
+
+```
+> cd cultexp
+> npm run doc
+```
+
+Serve the documentation by spinning up a local
+webserver in the ``out`` subdirectory. For example, using Python:
+
+```
+> cd out
+> python3 -m http.server 8000
+```
+
+Then view the pages by calling local port 8000 with a web browser:
+
+```
+http://localhost:8000
+```
+
 Installing the Legal Resource Registry
 --------------------------------------
 
