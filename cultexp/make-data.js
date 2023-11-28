@@ -28,7 +28,7 @@ var configPath = path.join(".", "make-data-config.json");
  * @param {string} e.message - error message
  */
 const handleError = (e) => {
-    throw e;
+    // throw e;
     console.log(`ERROR: ${e.message}`);
     process.exit();
 };
