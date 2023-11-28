@@ -486,7 +486,7 @@ SetupTool.prototype.checkCourtJurisdictionMap = function() {
  * @description Methods for sniffing column positions
  *   and for accessing column content by column nickname, while
  *   recognizing columns in arbitrary sequence within the spreadsheet.
- * @params {Object} opts - command-line options set by the `getopts` package
+ * @param {Object} opts - command-line options set by the `getopts` package
  */
 function ColumnTool(opts) {
     this.opts = opts;
