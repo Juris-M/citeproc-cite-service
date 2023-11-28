@@ -401,13 +401,11 @@ SetupTool.prototype.extractJurisdiction = function(line, currentJurisdictionCode
     if (!currentJurisdictionCode) {
         currentJurisdictionCode = this.defaultJurisdiction;
     }
-    var jurisdiction = line.jurisdiction;
-    if (!this.jurisObj[currentJurisdictionCode].jurisdictions[jurisdiction]) {
-        if (this.jurisdictionNames[jurisdiction]) {
-            jurisdiction = this.jurisdictionNames[jurisdiction];
+    if (!this.jurisObj[currentJurisdictionCode].jurisdictions[line.jurisdiction]) {
+        if (this.jurisdictionNames[line.jurisdiction]) {
+            line.jurisdiction = this.jurisdictionNames[jurisdiction];
         }
     }
-    line.jurisdiction = jurisdiction;
 }
 
 /**
