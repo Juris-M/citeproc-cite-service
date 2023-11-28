@@ -42,6 +42,234 @@
 
 
 
+    <section>
+        <article><h1><code>make-data</code>: CSV→CSL-JSON</h1>
+<h2>Acknowledgement</h2>
+<p>Juris-M/citeproc-cite-service was developed by Frank Bennett and is a
+primary output of EURO-EXPERT (n.161814) funded by the European
+Research Council.</p>
+<h2>Introduction</h2>
+<p>In the CultExp project, the citation details of cases of interest from
+each target jurisdiction are written into a spreadsheet, and coded to
+one or more documents (judgments, expert reports) as
+appropriate. Spreadsheets have between ten and seventeen columns from
+a standard schema, with standard headings. [1]</p>
+<p>Spreadsheets are then processed using the script documented here, to
+build a file in a specific format (CSL-JSON) that can be imported into
+a Jurism client and synced to the cloud service at <code>zotero.org</code>. Data
+is then fetched from the Zotero API and published to a front-end
+service for public consumption.</p>
+<p>Because the spreadsheet data model does not provide a record of the
+version level of individual lines or cells, the entire spreadsheet
+(typically containing all records for a single jurisdiction) is
+treated as a unit for purposes of adding, and for editing, any content
+to be published to the front end.</p>
+<p>The following are the steps needed to provide new <em>or modified</em>
+content to the front-end service:</p>
+<ol>
+<li>Prepare (or edit) an Excel spreadsheet with the appropriate
+columns, with an entry for each document or case to be added;</li>
+<li>Save the file, and also save it in CSV format;</li>
+<li>Prepare a set of files named to correspond to CultExp document
+codes and place them in a <code>files</code> subdirectory immediately
+below the CSV file to be processed;</li>
+<li>Use the <code>make-data</code> script documented here to generate a CSL JSON
+file (<code>import-me.json</code>), making amendments to the two <code>court-*</code>
+configuration files as necessary to avoid runtime errors;</li>
+<li>In the Jurism client library, move all items tagged for the jurisdiction to be
+updated to trash;</li>
+<li>Empty the Jurism client library trash;</li>
+<li>Import the CSL JSON data into the Jurism client library;</li>
+<li>Sync the client library to <code>zotero.org</code>;</li>
+<li>Run the <code>zsyncdown</code> script (documented in the top-level README of
+this repository);</li>
+<li>Perform whatever incantations are used to move retrieved data to the front-end service.</li>
+</ol>
+<p>Note that this full set of operations is required for <em>any</em> change
+to item content.</p>
+<h2>Installing <code>node</code> and <code>npm</code></h2>
+<p>The <code>make-data</code> conversion tool is a <code>node</code> script, so <code>node</code> must be installed on the system where CULTEXP spreadsheet data is to be processed. <code>Node</code> is available for free installation. Use a recent version.</p>
+<p><a href="https://nodejs.org/en/"><a href="https:%5C/%5C/nodejs.org/en/">https://nodejs.org/en/</a></a></p>
+<hr/>
+<h2>Installing the <code>make-data</code> script</h2>
+<p>To install the <code>make-data</code> script using the command line clone this repository to the target system. Then enter its <code>cultexp</code> subdirectory, install the script's dependencies, and link the script to your profile:</p>
+<pre class="prettyprint source lang-example"><code>$> git clone https://github.com/Juris-M/citeproc-cite-service.git
+$> cd citeproc-cite-service/cultexp
+$> npm install
+$> npm link
+</code></pre>
+<h2>Pretty-printed code documentation</h2>
+<p>Comments to the code of the <code>make-data</code> script are in JSDoc
+format. To generate an HTML view of the code, issue the command <code>npm run doc</code> in the <code>cultexp</code> repo directory:</p>
+<pre class="prettyprint source"><code>> cd cultexp
+> npm run doc
+</code></pre>
+<p>Serve the documentation by spinning up a local
+webserver in the <code>out</code> subdirectory. For example, using Python:</p>
+<pre class="prettyprint source"><code>> cd out
+> python3 -m http.server 8000
+</code></pre>
+<p>Then view the pages by calling local port 8000 with a web browser:</p>
+<pre class="prettyprint source"><code>http://localhost:8000
+</code></pre>
+<h2>Installing the Legal Resource Registry</h2>
+<p>The <code>make-data</code> conversion script relies on the Legal Resource Registry (LRR) to obtain court and jurisdiction codes. We will clone the LRR into a sibling directory to <code>citeproc-cite-service</code> above:</p>
+<pre class="prettyprint source lang-example"><code>$> cd ../..
+$> git clone https://github.com/Juris-M/legal-resource-registry.git
+</code></pre>
+<h2>Setting up a jurisdiction</h2>
+<p>To process a jurisdiction, create an empty directory and place the spreadsheet in it, saving the case listing in CSV format. Also (important!) copy all of the PDF attachment files for the jurisdiction into a single subdirectory named <code>files</code>.</p>
+<p><strong>A note on dates:</strong> When saving from Excel in CSV format, dates should be set to a numeric form, as &quot;YYYY-MM-DD.&quot; With other date formats, the <code>make-data</code> script will almost certainly throw errors.</p>
+<p>Enter the directory and run the command <code>make-data</code>:</p>
+<pre class="prettyprint source lang-example"><code>$> cd malta
+$> ls
+data-malta.csv  data-malta.xlsx  files
+$> make-data
+</code></pre>
+<p>This will throw an error and create a configuration file <code>make-data-config.json</code> with the following content:</p>
+<pre class="prettyprint source lang-example"><code>{
+  &quot;jurisdictionCode&quot;: &quot;xx&quot;,
+  &quot;jurisdictionName&quot;: &quot;Laputa&quot;,
+  &quot;jurisdictionDescPath&quot;: &quot;/path/to/legal-resource-registry-repo&quot;
+}
+</code></pre>
+<p>Edit the configuration file to reflect the target jurisdiction and the absolute path to the <code>src</code> subdirectory of the LRR. In this case, we are working on Malta:</p>
+<pre class="prettyprint source lang-example"><code>{
+  &quot;jurisdictionCode&quot;: &quot;mt&quot;,
+  &quot;jurisdictionName&quot;: &quot;Malta&quot;,
+  &quot;jurisdictionDescPath&quot;: &quot;/my/path/to/legal-resource-registry/src&quot;
+}
+</code></pre>
+<h2>Preparing a court map</h2>
+<p>With the configuration file in place, run <code>make-data</code> again. The script will issue a string of warnings and generate a file <code>court-code-map.json</code>. This file will be read by <code>make-data</code> to map court names written into the spreadsheet to their respective court codes, optionally also setting a court division and case type, where that information is expressed in the spreadsheet entries. The file is formatted as a series of lists, ordered as follows:</p>
+<ol>
+<li>Court description (from the spreadsheet)</li>
+<li>Court code (intially set to the court description)</li>
+<li>Court division (optional)</li>
+<li>Case type (optional)</li>
+</ol>
+<p>Open the relevant jurisdiction file in the LRR for reference (in this case, the file for Malta is <code>juris-mt-desc.json</code>). The <code>courts</code> section of the file contains the court codes recognized for the jurisdiction.</p>
+<p>Edit each entry in <code>court-code-map.json</code>, replacing the second element is each list with the appropriate court code. For example...</p>
+<pre class="prettyprint source lang-example"><code>  [
+    &quot;Qorti Civili Prim Awla&quot;,
+    &quot;Qorti Civili Prim Awla&quot;
+  ]
+</code></pre>
+<p>...becomes...</p>
+<pre class="prettyprint source lang-example"><code>  [
+    &quot;Qorti Civili Prim Awla&quot;,
+    &quot;qcpa&quot;
+  ]
+</code></pre>
+<p>Where the court description includes a court division, add a third element to the list. For example...</p>
+<pre class="prettyprint source lang-example"><code>  [
+    &quot;Qorti Civili (Sezzjoni tal-Familja)&quot;,
+    &quot;Qorti Civili (Sezzjoni tal-Familja)&quot;
+  ]
+</code></pre>
+<p>...becomes...</p>
+<pre class="prettyprint source lang-example"><code>  [
+    &quot;Qorti Civili (Sezzjoni tal-Familja)&quot;,
+    &quot;qc&quot;,
+    &quot;Sezzjoni tal-Familja&quot;
+  ]
+</code></pre>
+<p>Where the court description contains a note of the case type, add that as a fourth element in the list. In this case, if no court division is indicated, set <code>null</code> in the third position. This the following example...</p>
+<pre class="prettyprint source lang-example"><code>  [
+    &quot;Qorti Civili Prim Áwla (Gurisdizzjoni Kostituzzjonali)&quot;,
+    &quot;Qorti Civili Prim Áwla (Gurisdizzjoni Kostituzzjonali)&quot;
+  ]
+</code></pre>
+<p>...becomes...</p>
+<pre class="prettyprint source lang-example"><code>  [
+      &quot;Qorti Civili Prim Áwla (Gurisdizzjoni Kostituzzjonali)&quot;,
+      &quot;qcpa&quot;,
+      null,
+      &quot;Gurisdizzjoni Kostituzzjonali&quot;
+  ]
+</code></pre>
+<p>If courts are described in the spreadsheet that cannot be found in the LRR record of the jurisdiction, contact the Jurism data manager (Frank Bennett) to request an extension to the jurisdiction data.</p>
+<h2>Preparing a court jurisdiction map</h2>
+<p>In addition to the <code>court-code-map.json</code> file, the <code>make-data</code> script generates a file <code>court-jurisdiction-code.json</code>. Both files are used by the script to generate the final data for import into Jurism, and court codes set in the latter depend on the (edited) mapping lists in the former. It is therefore necessary to regenerate <code>court-jurisdiction-map.json</code> after completing edits to <code>court-code-map.json</code>. To regenerate the file, remove it from the directory and rerun <code>make-data</code>.</p>
+<pre class="prettyprint source lang-example"><code>$> rm court-jurisdiction-map.json
+$> make-data
+</code></pre>
+<p>The script will again issue warnings, due to mismatches between court codes and their associated jurisdictions. Open the regenerated file to make any necessary edits.</p>
+<p>In the case of Malta, there is only one warning, and one entry in <code>court-jurisdiction-code-map.json</code>, due to an unrecognized jurisdiction &quot;Gozo&quot;:</p>
+<pre class="prettyprint source lang-example"><code>{
+  &quot;qc::Gozo&quot;: {
+    &quot;court&quot;: &quot;qc&quot;,
+    &quot;jurisdiction&quot;: &quot;Gozo&quot;
+  }
+}
+</code></pre>
+<p>Leaving the <code>qc:Gozo</code> key untouched, and referring to the LRR, we enter the correct jurisdiction code for this island of Malta:</p>
+<pre class="prettyprint source lang-example"><code>{
+  &quot;qc::Gozo&quot;: {
+    &quot;court&quot;: &quot;qc&quot;,
+    &quot;jurisdiction&quot;: &quot;mt:gozo&quot;
+  }
+}
+</code></pre>
+<p>Note that the court code and jurisdiction code must be valid partners: in the LRR, the court code must appear in the <code>courts</code> array under the given jurisdiction code. For example:</p>
+<pre class="prettyprint source lang-example"><code>&quot;mt:gozo&quot;: {
+    &quot;name&quot;: &quot;Gozo&quot;,
+    &quot;courts&quot;: {
+        &quot;qc&quot;: {}
+    }
+}
+</code></pre>
+<p>If a valid jurisdiction for the given court cannot be found in the LRR, or if the jurisdiction itself cannot be found there, contact the Jurism data manager (Frank Bennett) to have the necessary changes made to the LRR jurisdiction records.</p>
+<h2>Uploading data for a jurisdiction</h2>
+<p>Once the above steps have been completed, the <code>make-data</code> script will run without warnings. It will generate a file <code>import-me.json</code>, which is a valid CSL-JSON import object reflecting all of the entries in the spreadsheet.</p>
+<p>To upload data for the jurisdiction, import this file into a Jurism client in the usual way, and sync the library to the Zotero servers.</p>
+<h2>Final preparation</h2>
+<p>Before data for a jurisdiction is pulled to the front end for the first time, check with the Jurism data manager (Frank Bennett) to be sure that the citation format for the target jurisdiction has been defined.</p>
+<h1>Footnotes</h1>
+<p>[1] Spreadsheets have the following column headings (those set in <em>italics</em> are optional):</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Doc ID</td>
+<td><em>Year as Volume</em></td>
+<td>Link</td>
+</tr>
+<tr>
+<td>Date</td>
+<td><em>Volume</em></td>
+<td>Keywords</td>
+</tr>
+<tr>
+<td><em>Court Division</em></td>
+<td><em>Reporter</em></td>
+<td>Area of Law</td>
+</tr>
+<tr>
+<td><em>Case Type</em></td>
+<td><em>Page</em></td>
+<td>Summary</td>
+</tr>
+<tr>
+<td>Docket Number</td>
+<td>Expert Presence</td>
+<td>Language</td>
+</tr>
+<tr>
+<td><em>Case Name</em></td>
+<td>Expert Instructed By</td>
+<td></td>
+</tr>
+</tbody>
+</table></article>
+    </section>
+
 
 
 
@@ -56,7 +284,7 @@
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sat Nov 25 2023 13:54:40 GMT+0900 (Japan Standard Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Tue Nov 28 2023 09:47:13 GMT+0900 (Japan Standard Time)
 </footer>
 
 <script> prettyPrint(); </script>

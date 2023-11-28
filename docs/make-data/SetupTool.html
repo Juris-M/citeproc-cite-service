@@ -49,11 +49,11 @@
 
 
 <div class="description">
-    <p>Methods to configure
-the script and emit and read mapping files for
-conversion of human-readable court and jurisdiction
-descriptions into valid machine-readable data conformant
-to the Legal Resource Registry.</p>
+    Methods to configure
+  the script and emit and read mapping files for
+  conversion of human-readable court and jurisdiction
+  descriptions into valid machine-readable data conformant
+  to the Legal Resource Registry.
 </div>
 
 
@@ -105,7 +105,7 @@ to the Legal Resource Registry.</p>
 
             
 
-            <td class="description last"><p>command-line options set by the <code>getopts</code> package</p></td>
+            <td class="description last">command-line options set by the `getopts` package</td>
         </tr>
 
     
@@ -210,10 +210,10 @@ to the Legal Resource Registry.</p>
 
 
 <div class="description">
-    <p>Attempt to match the (possibly reprocessed) spreadsheet court
-and jurisdiction values in the <code>jurisdictions</code> segment of the
-default jurisdiction in the LRR, and add those that fail to an
-object for reference.</p>
+    Attempt to match the (possibly reprocessed) spreadsheet court
+  and jurisdiction values in the ``jurisdictions`` segment of the
+  default jurisdiction in the LRR, and add those that fail to an
+  object for reference.
 </div>
 
 
@@ -270,9 +270,9 @@ object for reference.</p>
 
             
 
-            <td class="description last"><p>court and jurisdiction codes, keyed
-to the known (but invalid) values of court and jurisdiction derived from
-the spreadsheet</p></td>
+            <td class="description last">court and jurisdiction codes, keyed
+  to the known (but invalid) values of court and jurisdiction derived from
+  the spreadsheet</td>
         </tr>
 
     
@@ -362,9 +362,9 @@ the spreadsheet</p></td>
 
 
 <div class="description">
-    <p>Attempt to match the (possibly reprocessed)
-spreadsheet court value to a court registered in the
-LRR, and add those that fail to an array for reference.</p>
+    Attempt to match the (possibly reprocessed)
+  spreadsheet court value to a court registered in the
+  LRR, and add those that fail to an array for reference.
 </div>
 
 
@@ -416,8 +416,8 @@ LRR, and add those that fail to an array for reference.</p>
 
             
 
-            <td class="description last"><p>the content of a spreadsheet line, keyed to
-column nicknames</p></td>
+            <td class="description last">the content of a spreadsheet line, keyed to
+  column nicknames</td>
         </tr>
 
     
@@ -471,8 +471,8 @@ column nicknames</p></td>
 
             
 
-            <td class="description last"><p>container for court name-to-code pairings
-to be edited by the operator</p></td>
+            <td class="description last">container for court name-to-code pairings
+  to be edited by the operator</td>
         </tr>
 
     
@@ -555,10 +555,10 @@ to be edited by the operator</p></td>
 
 
 <div class="description">
-    <p>Check the jurisdiction values in <code>courtJurisdictionMap</code>
-for validity of syntax and presence in the LRR. The court value
-is not tested, as invalid court values are covered by a warning,
-and will not block processing.</p>
+    Check the jurisdiction values in ``courtJurisdictionMap``
+  for validity of syntax and presence in the LRR. The court value
+  is not tested, as invalid court values are covered by a warning,
+  and will not block processing.
 </div>
 
 
@@ -638,7 +638,7 @@ and will not block processing.</p>
 
     <div class="param-desc">
     
-        <p>an error listing invalid jurisdictions</p>
+        an error listing invalid jurisdictions
     
     </div>
 
@@ -665,16 +665,15 @@ and will not block processing.</p>
 
 
 <div class="description">
-    <p>Check that the code element of each name-to-code pair
-in <code>courtMap</code> satifies two conditions:</p>
-<ul>
-<li>the code is not empty; and</li>
-<li>the code is registered in the <code>courts</code> segment of the default
-jurisdiction in the LRR</li>
-</ul>
-<p>Collect failures in two lists corresponding to the type
+    Check that the code element of each name-to-code pair
+  in ``courtMap`` satifies two conditions:
+- the code is not empty; and
+- the code is registered in the ``courts`` segment of the default
+  jurisdiction in the LRR
+
+Collect failures in two lists corresponding to the type
 of failure, and issue a helpful warning for the latter and
-throw a helpful error for the former.</p>
+throw a helpful error for the former.
 </div>
 
 
@@ -762,9 +761,9 @@ throw a helpful error for the former.</p>
 
 
 <div class="description">
-    <p>Check that the <code>jurisdictionCode</code> value read
-from <code>make-data-config.json</code> has been changed from the
-sample value of &quot;xx&quot;.</p>
+    Check that the ``jurisdictionCode`` value read
+  from ``make-data-config.json`` has been changed from the
+  sample value of "xx".
 </div>
 
 
@@ -837,7 +836,7 @@ sample value of &quot;xx&quot;.</p>
 
     <div class="param-desc">
     
-        <p>a helpful error</p>
+        a helpful error
     
     </div>
 
@@ -864,8 +863,8 @@ sample value of &quot;xx&quot;.</p>
 
 
 <div class="description">
-    <p>Build a one-to-one map of human-readable court names
-to machine-readable LRR court codes.</p>
+    Build a one-to-one map of human-readable court names
+  to machine-readable LRR court codes.
 </div>
 
 
@@ -922,7 +921,7 @@ to machine-readable LRR court codes.</p>
 
             
 
-            <td class="description last"><p>container for the name-to-code mapping</p></td>
+            <td class="description last">container for the name-to-code mapping</td>
         </tr>
 
     
@@ -1005,12 +1004,12 @@ to machine-readable LRR court codes.</p>
 
 
 <div class="description">
-    <p>Attempt to match the spreadsheet <code>jurisdiction</code> value
-with a jurisdiction name. If a match is found, replace the spreadsheet
-value with the corresponding LRR machine-readable code. (This match
-attempt will succeed only in the rare event that the data collector
-has provided Jurism-style jurisdiction values in the Jurisdiction column
-of the spreadsheet.)</p>
+    Attempt to match the spreadsheet ``jurisdiction`` value
+  with a jurisdiction name. If a match is found, replace the spreadsheet
+  value with the corresponding LRR machine-readable code. (This match
+  attempt will succeed only in the rare event that the data collector
+  has provided Jurism-style jurisdiction values in the Jurisdiction column
+  of the spreadsheet.)
 </div>
 
 
@@ -1072,8 +1071,8 @@ of the spreadsheet.)</p>
 
             
 
-            <td class="description last"><p>the content of a spreadsheet line, keyed to
-column nicknames</p></td>
+            <td class="description last">the content of a spreadsheet line, keyed to 
+  column nicknames</td>
         </tr>
 
     
@@ -1106,8 +1105,8 @@ column nicknames</p></td>
 
             
 
-            <td class="description last"><p>jurisdiction code to use
-for the match attempt</p></td>
+            <td class="description last">jurisdiction code to use
+  for the match attempt</td>
         </tr>
 
     
@@ -1192,10 +1191,10 @@ for the match attempt</p></td>
 
 
 <div class="description">
-    <p>Compose human-readable descriptive names
-for all subjurisdictions of the default jurisdiction,
-and set them as keys mapped to their machine-readable
-LRR codes.</p>
+    Compose human-readable descriptive names
+  for all subjurisdictions of the default jurisdiction,
+  and set them as keys mapped to their machine-readable
+  LRR codes.
 </div>
 
 
@@ -1252,7 +1251,7 @@ LRR codes.</p>
 
             
 
-            <td class="description last"><p>a map of jurisdiction names to machine-readable codes</p></td>
+            <td class="description last">a map of jurisdiction names to machine-readable codes</td>
         </tr>
 
     
@@ -1335,9 +1334,9 @@ LRR codes.</p>
 
 
 <div class="description">
-    <p>A spreadsheet entry may declare a jurisdiction other
-than the default. Extract the top-level jurisdiction from a
-jurisdiction code and return its value.</p>
+    A spreadsheet entry may declare a jurisdiction other
+  than the default. Extract the top-level jurisdiction from a
+  jurisdiction code and return its value.
 </div>
 
 
@@ -1443,8 +1442,8 @@ jurisdiction code and return its value.</p>
 
 
 <div class="description">
-    <p>Load the configuration file to set values need to run
-the script.</p>
+    Load the configuration file to set values need to run
+  the script.
 </div>
 
 
@@ -1496,7 +1495,7 @@ the script.</p>
 
             
 
-            <td class="description last"><p>the short-code of the default jurisdiction</p></td>
+            <td class="description last">the short-code of the default jurisdiction</td>
         </tr>
 
     
@@ -1519,7 +1518,7 @@ the script.</p>
 
             
 
-            <td class="description last"><p>the long-form name of the jurisdiction</p></td>
+            <td class="description last">the long-form name of the jurisdiction</td>
         </tr>
 
     
@@ -1542,7 +1541,7 @@ the script.</p>
 
             
 
-            <td class="description last"><p>the path to the Legal Resource Registry files on this system</p></td>
+            <td class="description last">the path to the Legal Resource Registry files on this system</td>
         </tr>
 
     
@@ -1596,7 +1595,7 @@ the script.</p>
 
             
 
-            <td class="description last"><p>the default jurisdiction (the short-code)</p></td>
+            <td class="description last">the default jurisdiction (the short-code)</td>
         </tr>
 
     
@@ -1619,7 +1618,7 @@ the script.</p>
 
             
 
-            <td class="description last"><p>the input file name (derived from the long-form jurisdiction name)</p></td>
+            <td class="description last">the input file name (derived from the long-form jurisdiction name)</td>
         </tr>
 
     
@@ -1642,7 +1641,7 @@ the script.</p>
 
             
 
-            <td class="description last"><p>the path to the default jurisdiction in the LRR (derived from the short-code)</p></td>
+            <td class="description last">the path to the default jurisdiction in the LRR (derived from the short-code)</td>
         </tr>
 
     
@@ -1725,8 +1724,8 @@ the script.</p>
 
 
 <div class="description">
-    <p>Read the operator-edited jurisdiction
-map file for reference.</p>
+    Read the operator-edited jurisdiction
+  map file for reference.
 </div>
 
 
@@ -1783,9 +1782,9 @@ map file for reference.</p>
 
             
 
-            <td class="description last"><p>court and jurisdiction codes, keyed
-to the known (but invalid) values of court and jurisdiction derived from
-the spreadsheet</p></td>
+            <td class="description last">court and jurisdiction codes, keyed
+  to the known (but invalid) values of court and jurisdiction derived from
+  the spreadsheet</td>
         </tr>
 
     
@@ -1868,10 +1867,10 @@ the spreadsheet</p></td>
 
 
 <div class="description">
-    <p>Read the array of name-to-code pairs
-for courts in the default jurisdiction, sorting
-first by the length of the name to avoid false positives,
-then alphabetically just as a flourish.</p>
+    Read the array of name-to-code pairs
+  for courts in the default jurisdiction, sorting
+  first by the length of the name to avoid false positives,
+  then alphabetically just as a flourish.
 </div>
 
 
@@ -1928,8 +1927,8 @@ then alphabetically just as a flourish.</p>
 
             
 
-            <td class="description last"><p>container for operator-edited
-court name-to-code pairings</p></td>
+            <td class="description last">container for operator-edited
+  court name-to-code pairings</td>
         </tr>
 
     
@@ -2012,9 +2011,9 @@ court name-to-code pairings</p></td>
 
 
 <div class="description">
-    <p>Read the data file for the current jurisdiction
-if it is not already set on the <code>jurisObj</code> object containing
-LRR data.</p>
+    Read the data file for the current jurisdiction
+  if it is not already set on the ``jurisObj`` object containing
+  LRR data.
 </div>
 
 
@@ -2066,8 +2065,8 @@ LRR data.</p>
 
             
 
-            <td class="description last"><p>the content of a spreadsheet line, keyed to
-column nicknames</p></td>
+            <td class="description last">the content of a spreadsheet line, keyed to
+  column nicknames</td>
         </tr>
 
     
@@ -2152,7 +2151,7 @@ column nicknames</p></td>
 
 
 <div class="description">
-    <p>Load the default jurisdiction data.</p>
+    Load the default jurisdiction data.
 </div>
 
 
@@ -2209,7 +2208,7 @@ column nicknames</p></td>
 
             
 
-            <td class="description last"><p>the runtime container for LRR data</p></td>
+            <td class="description last">the runtime container for LRR data</td>
         </tr>
 
     
@@ -2292,10 +2291,10 @@ column nicknames</p></td>
 
 
 <div class="description">
-    <p>If a file <code>useDocsOnItems.txt</code> exists
-in the data directory, read it as a newline-delimited
-list of CultExp IDs and set their values in an
-array on this class instance.</p>
+    If a file ``useDocsOnItems.txt`` exists
+  in the data directory, read it as a newline-delimited
+  list of CultExp IDs and set their values in an
+  array on this class instance.
 </div>
 
 
@@ -2352,7 +2351,7 @@ array on this class instance.</p>
 
             
 
-            <td class="description last"><p>a resulting array of CultExp IDs</p></td>
+            <td class="description last">a resulting array of CultExp IDs</td>
         </tr>
 
     
@@ -2435,9 +2434,9 @@ array on this class instance.</p>
 
 
 <div class="description">
-    <p>Replace spreadsheet values for court, and optionally
-division, type, and human-readable jurisdiction with values
-from the operator-edited map file.</p>
+    Replace spreadsheet values for court, and optionally
+  division, type, and human-readable jurisdiction with values
+  from the operator-edited map file.
 </div>
 
 
@@ -2489,8 +2488,8 @@ from the operator-edited map file.</p>
 
             
 
-            <td class="description last"><p>the content of a spreadsheet line, keyed to
-column nicknames</p></td>
+            <td class="description last">the content of a spreadsheet line, keyed to 
+  column nicknames</td>
         </tr>
 
     
@@ -2582,8 +2581,8 @@ column nicknames</p></td>
 
 
 <div class="description">
-    <p>Replace spreadsheet court and jurisdiction values
-with value from the operator-edited map file.</p>
+    Replace spreadsheet court and jurisdiction values
+  with value from the operator-edited map file.
 </div>
 
 
@@ -2635,8 +2634,8 @@ with value from the operator-edited map file.</p>
 
             
 
-            <td class="description last"><p>the content of a spreadsheet line, keyed to
-column nicknames</p></td>
+            <td class="description last">the content of a spreadsheet line, keyed to 
+  column nicknames</td>
         </tr>
 
     
@@ -2728,7 +2727,7 @@ column nicknames</p></td>
 
 
 <div class="description">
-    <p>Write a sample config file to disk if no config file exists.</p>
+    Write a sample config file to disk if no config file exists.
 </div>
 
 
@@ -2816,7 +2815,7 @@ column nicknames</p></td>
 
 
 <div class="description">
-    <p>Create an empty court-in-jurisdiction code map file if none is found.</p>
+    Create an empty court-in-jurisdiction code map file if none is found.
 </div>
 
 
@@ -2868,7 +2867,7 @@ column nicknames</p></td>
 
             
 
-            <td class="description last"><p>courtJurisdictionMapPath - path to the court-in-jurisdiction map file to be edited</p></td>
+            <td class="description last">courtJurisdictionMapPath - path to the court-in-jurisdiction map file to be edited</td>
         </tr>
 
     
@@ -2891,7 +2890,7 @@ column nicknames</p></td>
 
             
 
-            <td class="description last"><p>flag indicating whether file has been freshly created.</p></td>
+            <td class="description last">flag indicating whether file has been freshly created.</td>
         </tr>
 
     
@@ -2974,7 +2973,7 @@ column nicknames</p></td>
 
 
 <div class="description">
-    <p>Create an empty court code map file if none is found.</p>
+    Create an empty court code map file if none is found.
 </div>
 
 
@@ -3026,7 +3025,7 @@ column nicknames</p></td>
 
             
 
-            <td class="description last"><p>courtMapPath - path to the court map file to be edited</p></td>
+            <td class="description last">courtMapPath - path to the court map file to be edited</td>
         </tr>
 
     
@@ -3049,7 +3048,7 @@ column nicknames</p></td>
 
             
 
-            <td class="description last"><p>flag indicating whether file has been freshly created.</p></td>
+            <td class="description last">flag indicating whether file has been freshly created.</td>
         </tr>
 
     
@@ -3132,10 +3131,10 @@ column nicknames</p></td>
 
 
 <div class="description">
-    <p>Check that a string conforms to the syntax of
-a jurisdiction code, and matches a jurisdiction code
-in the <code>jurisdictions</code> segment of the LRR. Return <code>true</code>
-if a match is found, otherwise <code>false</code>.</p>
+    Check that a string conforms to the syntax of
+  a jurisdiction code, and matches a jurisdiction code
+  in the ``jurisdictions`` segment of the LRR. Return ``true``
+  if a match is found, otherwise ``false``.
 </div>
 
 
@@ -3241,10 +3240,10 @@ if a match is found, otherwise <code>false</code>.</p>
 
 
 <div class="description">
-    <p>If the data file of the default jurisdiction does
-not exist in the Legal Resource Registry, throw an error.
-This is limited to path validation, and does
-not extend to validation of the LRR itself.</p>
+    If the data file of the default jurisdiction does
+  not exist in the Legal Resource Registry, throw an error.
+  This is limited to path validation, and does
+  not extend to validation of the LRR itself.
 </div>
 
 
@@ -3340,7 +3339,7 @@ not extend to validation of the LRR itself.</p>
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sat Nov 25 2023 13:54:40 GMT+0900 (Japan Standard Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Tue Nov 28 2023 09:47:13 GMT+0900 (Japan Standard Time)
 </footer>
 
 <script> prettyPrint(); </script>

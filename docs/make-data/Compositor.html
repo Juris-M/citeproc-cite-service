@@ -49,8 +49,8 @@
 
 
 <div class="description">
-    <p>Methods for composing CSL-M JSON items
-based on spreadsheet content.</p>
+    Methods for composing CSL-M JSON items
+  based on spreadsheet content.
 </div>
 
 
@@ -102,7 +102,7 @@ based on spreadsheet content.</p>
 
             
 
-            <td class="description last"><p>command-line options set by the <code>getopts</code> package</p></td>
+            <td class="description last">command-line options set by the `getopts` package</td>
         </tr>
 
     
@@ -125,7 +125,7 @@ based on spreadsheet content.</p>
 
             
 
-            <td class="description last"><p>short-code of the default jurisdiction</p></td>
+            <td class="description last">short-code of the default jurisdiction</td>
         </tr>
 
     
@@ -148,7 +148,7 @@ based on spreadsheet content.</p>
 
             
 
-            <td class="description last"><p>CultExp IDs of items to be tagged with <code>showDocs</code></p></td>
+            <td class="description last">CultExp IDs of items to be tagged with ``showDocs``</td>
         </tr>
 
     
@@ -202,7 +202,7 @@ based on spreadsheet content.</p>
 
             
 
-            <td class="description last"><p>command-line options set by the <code>getopts</code> package</p></td>
+            <td class="description last">command-line options set by the `getopts` package</td>
         </tr>
 
     
@@ -225,7 +225,7 @@ based on spreadsheet content.</p>
 
             
 
-            <td class="description last"><p>short-code of the default jurisdiction</p></td>
+            <td class="description last">short-code of the default jurisdiction</td>
         </tr>
 
     
@@ -248,7 +248,7 @@ based on spreadsheet content.</p>
 
             
 
-            <td class="description last"><p>CultExp IDs of items to be tagged with <code>showDocs</code></p></td>
+            <td class="description last">CultExp IDs of items to be tagged with ``showDocs``</td>
         </tr>
 
     
@@ -343,9 +343,9 @@ based on spreadsheet content.</p>
 
 
 <div class="description">
-    <p>A list of tag prefixes to be set on
-tags drawn from designated columns identified
-by column nickname.</p>
+    A list of tag prefixes to be set on
+  tags drawn from designated columns identified
+  by column nickname.
 </div>
 
 
@@ -419,16 +419,14 @@ by column nickname.</p>
 
 
 <div class="description">
-    <p>Monolithic method to compose CSL JSON
-attachment metadata for insertion into an item object.
-A few highlights:</p>
-<ul>
-<li>the <code>empty.pdf</code> placeholder is not added</li>
-<li>root CultExp ID extensions of A-D to indicate levels of appeal,
-ER to indicate an expert report, and a-z to disambiguate
-multiple expert reports, and be used solo or in combination</li>
-<li>expert reports and judgments are tagged as such</li>
-</ul>
+    Monolithic method to compose CSL JSON
+  attachment metadata for insertion into an item object.
+  A few highlights:
+- the ``empty.pdf`` placeholder is not added
+- root CultExp ID extensions of A-D to indicate levels of appeal,
+  ER to indicate an expert report, and a-z to disambiguate
+  multiple expert reports, and be used solo or in combination
+- expert reports and judgments are tagged as such
 </div>
 
 
@@ -480,8 +478,8 @@ multiple expert reports, and be used solo or in combination</li>
 
             
 
-            <td class="description last"><p>the content of a spreadsheet line, keyed to
-column nicknames</p></td>
+            <td class="description last">the content of a spreadsheet line, keyed to 
+  column nicknames</td>
         </tr>
 
     
@@ -575,7 +573,7 @@ column nicknames</p></td>
 
 
 <div class="description">
-    <p>Compose a CSL-M JSON item.</p>
+    Compose a CSL-M JSON item.
 </div>
 
 
@@ -627,8 +625,8 @@ column nicknames</p></td>
 
             
 
-            <td class="description last"><p>the content of a spreadsheet line, keyed to
-column nicknames</p></td>
+            <td class="description last">the content of a spreadsheet line, keyed to 
+  column nicknames</td>
         </tr>
 
     
@@ -651,7 +649,7 @@ column nicknames</p></td>
 
             
 
-            <td class="description last"><p>omit the Abstract value from the composed item</p></td>
+            <td class="description last">omit the Abstract value from the composed item</td>
         </tr>
 
     
@@ -745,15 +743,13 @@ column nicknames</p></td>
 
 
 <div class="description">
-    <p>Combines several actions:</p>
-<ul>
-<li>Check for existence of a <code>files</code> subdirectory containing
-attachment files, and throw an error if it does not exist</li>
-<li>Copy an <code>empty.pdf</code> file into the <code>files</code> subdirectory
-for possible use as a placeholder</li>
-<li>Finally, return the path to the <code>files</code> subdirectory,
-or to a file it contains, if specified.</li>
-</ul>
+    Combines several actions:
+- Check for existence of a ``files`` subdirectory containing
+  attachment files, and throw an error if it does not exist
+- Copy an ``empty.pdf`` file into the ``files`` subdirectory
+  for possible use as a placeholder
+- Finally, return the path to the ``files`` subdirectory,
+  or to a file it contains, if specified.
 </div>
 
 
@@ -817,7 +813,7 @@ or to a file it contains, if specified.</li>
 
             
 
-            <td class="description last"><p>name of a specific attachment file</p></td>
+            <td class="description last">name of a specific attachment file</td>
         </tr>
 
     
@@ -902,8 +898,8 @@ or to a file it contains, if specified.</li>
 
 
 <div class="description">
-    <p>Trim leading a trailing space from string
-and return.</p>
+    Trim leading a trailing space from string
+  and return.
 </div>
 
 
@@ -955,7 +951,7 @@ and return.</p>
 
             
 
-            <td class="description last"><p>abstract value from spreadsheet</p></td>
+            <td class="description last">abstract value from spreadsheet</td>
         </tr>
 
     
@@ -1058,10 +1054,10 @@ and return.</p>
 
 
 <div class="description">
-    <p>Attempt to convert the content of the spreadsheet &quot;date&quot; column
-to a valid date in CSL JSON array format. Spreadsheet dates should be set in
-YYYY-MM-DD format to avoid ambiguity. Where dates not in this format are
-invalid, impossible, or ambiguous, an error is thrown.</p>
+    Attempt to convert the content of the spreadsheet "date" column
+  to a valid date in CSL JSON array format. Spreadsheet dates should be set in
+  YYYY-MM-DD format to avoid ambiguity. Where dates not in this format are
+  invalid, impossible, or ambiguous, an error is thrown.
 </div>
 
 
@@ -1113,7 +1109,7 @@ invalid, impossible, or ambiguous, an error is thrown.</p>
 
             
 
-            <td class="description last"><p>the &quot;id&quot; value from the spreadsheet</p></td>
+            <td class="description last">the "id" value from the spreadsheet</td>
         </tr>
 
     
@@ -1136,7 +1132,7 @@ invalid, impossible, or ambiguous, an error is thrown.</p>
 
             
 
-            <td class="description last"><p>a string to parse as a date</p></td>
+            <td class="description last">a string to parse as a date</td>
         </tr>
 
     
@@ -1239,16 +1235,16 @@ invalid, impossible, or ambiguous, an error is thrown.</p>
 
 
 <div class="description">
-    <p>Return the first five characters of
-a docID as the item identifier. (The code to append
-the suffix value of an ID coded as an appellate
-judgment has been commented out, because in
-practice it appears that documents with these
-suffixed IDs appear in the spreadsheets only
-as child attachments of an item without suffix
-representing a trial judgment. If that is not
-always the case, adjustments of some sort
-might be required.)</p>
+    Return the first five characters of
+  a docID as the item identifier. (The code to append
+  the suffix value of an ID coded as an appellate
+  judgment has been commented out, because in
+  practice it appears that documents with these
+  suffixed IDs appear in the spreadsheets only
+  as child attachments of an item without suffix
+  representing a trial judgment. If that is not
+  always the case, adjustments of some sort
+  might be required.)
 </div>
 
 
@@ -1300,7 +1296,7 @@ might be required.)</p>
 
             
 
-            <td class="description last"><p>a CultExp docID</p></td>
+            <td class="description last">a CultExp docID</td>
         </tr>
 
     
@@ -1385,12 +1381,12 @@ might be required.)</p>
 
 
 <div class="description">
-    <p>Compose tags as a comma-delimited list,
-setting the appropriate prefix on tags drawn from
-spreadsheet columns. Columns containing a comma-
-or semicolon-delimited list of tags are split
-before processing, so that prefixes are applied
-to all such tags.</p>
+    Compose tags as a comma-delimited list,
+  setting the appropriate prefix on tags drawn from
+  spreadsheet columns. Columns containing a comma-
+  or semicolon-delimited list of tags are split
+  before processing, so that prefixes are applied
+  to all such tags.
 </div>
 
 
@@ -1452,8 +1448,8 @@ to all such tags.</p>
 
             
 
-            <td class="description last"><p>the content of a spreadsheet line, keyed to
-column nicknames</p></td>
+            <td class="description last">the content of a spreadsheet line, keyed to 
+  column nicknames</td>
         </tr>
 
     
@@ -1486,7 +1482,7 @@ column nicknames</p></td>
 
             
 
-            <td class="description last"><p>additional tags not included in the spreadsheet</p></td>
+            <td class="description last">additional tags not included in the spreadsheet</td>
         </tr>
 
     
@@ -1597,7 +1593,7 @@ column nicknames</p></td>
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sat Nov 25 2023 13:54:40 GMT+0900 (Japan Standard Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Tue Nov 28 2023 09:47:13 GMT+0900 (Japan Standard Time)
 </footer>
 
 <script> prettyPrint(); </script>

@@ -28,7 +28,7 @@
 
 <header>
     
-        <h2><span class="attribs"><span class="type-signature"></span></span>ColumnTool<span class="signature">()</span><span class="type-signature"></span></h2>
+        <h2><span class="attribs"><span class="type-signature"></span></span>ColumnTool<span class="signature">(opts)</span><span class="type-signature"></span></h2>
         
     
 </header>
@@ -41,7 +41,7 @@
     
 
     
-    <h4 class="name" id="ColumnTool"><span class="type-signature"></span>new ColumnTool<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="ColumnTool"><span class="type-signature"></span>new ColumnTool<span class="signature">(opts)</span><span class="type-signature"></span></h4>
     
 
     
@@ -49,9 +49,9 @@
 
 
 <div class="description">
-    <p>Methods for sniffing column positions
-and for accessing column content by column nickname, while
-recognizing columns in arbitrary sequence within the spreadsheet.</p>
+    Methods for sniffing column positions
+  and for accessing column content by column nickname, while
+  recognizing columns in arbitrary sequence within the spreadsheet.
 </div>
 
 
@@ -60,6 +60,55 @@ recognizing columns in arbitrary sequence within the spreadsheet.</p>
 
 
 
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>opts</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">command-line options set by the `getopts` package</td>
+        </tr>
+
+    
+    </tbody>
+</table>
 
 
 
@@ -151,8 +200,8 @@ recognizing columns in arbitrary sequence within the spreadsheet.</p>
 
 
 <div class="description">
-    <p>A mapping of column nicknames to strings
-likely to be found in the header of each.</p>
+    A mapping of column nicknames to strings
+  likely to be found in the header of each.
 </div>
 
 
@@ -226,8 +275,8 @@ likely to be found in the header of each.</p>
 
 
 <div class="description">
-    <p>Check that all expected columns are present
-in the spreadsheet, and throw an error if they are not.</p>
+    Check that all expected columns are present
+  in the spreadsheet, and throw an error if they are not.
 </div>
 
 
@@ -300,7 +349,7 @@ in the spreadsheet, and throw an error if they are not.</p>
 
     <div class="param-desc">
     
-        <p>a helpful error on the first column identified as missing</p>
+        a helpful error on the first column identified as missing
     
     </div>
 
@@ -327,15 +376,13 @@ in the spreadsheet, and throw an error if they are not.</p>
 
 
 <div class="description">
-    <p>Check that there is one and only one
-CSV file in the current directory with the form
-&quot;data-&lt;country name&gt;.csv&quot;.</p>
-<ul>
-<li>If more than one such file exists,
-throw an appropriate error</li>
-<li>If no such file exists, throw a different
-appropriate error</li>
-</ul>
+    Check that there is one and only one
+  CSV file in the current directory with the form
+  "data-\<country name\>.csv".
+* If more than one such file exists,
+  throw an appropriate error
+* If no such file exists, throw a different
+  appropriate error
 </div>
 
 
@@ -423,9 +470,9 @@ appropriate error</li>
 
 
 <div class="description">
-    <p>Read the spreadsheet file, normalize its line endings,
-and parse the content to an array of arrays. Analyze the first
-line to match columns to nicknames, and discard the headline.</p>
+    Read the spreadsheet file, normalize its line endings,
+  and parse the content to an array of arrays. Analyze the first
+  line to match columns to nicknames, and discard the headline.
 </div>
 
 
@@ -477,7 +524,7 @@ line to match columns to nicknames, and discard the headline.</p>
 
             
 
-            <td class="description last"><p>path to CSV file to use as input</p></td>
+            <td class="description last">path to CSV file to use as input</td>
         </tr>
 
     
@@ -571,9 +618,9 @@ line to match columns to nicknames, and discard the headline.</p>
 
 
 <div class="description">
-    <p>Copy each labeled cell of a spreadsheet line
-to an object with the column nickname as its key,
-and return the object.</p>
+    Copy each labeled cell of a spreadsheet line
+  to an object with the column nickname as its key,
+  and return the object.
 </div>
 
 
@@ -625,7 +672,7 @@ and return the object.</p>
 
             
 
-            <td class="description last"><p>an array representing one spreadsheet line</p></td>
+            <td class="description last">an array representing one spreadsheet line</td>
         </tr>
 
     
@@ -728,11 +775,11 @@ and return the object.</p>
 
 
 <div class="description">
-    <p>For each column label in the spreadsheet
-headline, check for its match string among those corresponding
-to column nicknames. If found, add its nickname to an array
-of column nicknames. Otherwise add null to the array to flag
-it as irrelevant.</p>
+    For each column label in the spreadsheet
+  headline, check for its match string among those corresponding
+  to column nicknames. If found, add its nickname to an array
+  of column nicknames. Otherwise add null to the array to flag
+  it as irrelevant.
 </div>
 
 
@@ -784,7 +831,7 @@ it as irrelevant.</p>
 
             
 
-            <td class="description last"><p>an array representing one spreadsheet line</p></td>
+            <td class="description last">an array representing one spreadsheet line</td>
         </tr>
 
     
@@ -838,8 +885,8 @@ it as irrelevant.</p>
 
             
 
-            <td class="description last"><p>an array of column nicknames, in the
-order of the corresponding columns in the spreadsheet</p></td>
+            <td class="description last">an array of column nicknames, in the
+  order of the corresponding columns in the spreadsheet</td>
         </tr>
 
     
@@ -930,7 +977,7 @@ order of the corresponding columns in the spreadsheet</p></td>
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sat Nov 25 2023 13:54:40 GMT+0900 (Japan Standard Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Tue Nov 28 2023 09:47:13 GMT+0900 (Japan Standard Time)
 </footer>
 
 <script> prettyPrint(); </script>
