@@ -1,14 +1,12 @@
-`make-data` CSV→CSL-JSON conversion script
-==========================================
+# `make-data`: CSV→CSL-JSON
 
-Acknowledgement
----------------
+## Acknowledgement
+
 Juris-M/citeproc-cite-service was developed by Frank Bennett and is a
 primary output of EURO-EXPERT (n.161814) funded by the European
 Research Council.
 
-Introduction
-------------
+## Introduction
 
 In the CultExp project, the citation details of cases of interest from
 each target jurisdiction are written into a spreadsheet, and coded to
@@ -52,16 +50,15 @@ content to the front-end service:
 Note that this full set of operations is required for *any* change
 to item content.
 
-Installing `node` and `npm`
----------------------------
+## Installing `node` and `npm`
 
 The `make-data` conversion tool is a `node` script, so `node` must be installed on the system where CULTEXP spreadsheet data is to be processed. `Node` is available for free installation. Use a recent version.
 
 [<https://nodejs.org/en/>](https://nodejs.org/en/)
-==================================================
 
-Installing the `make-data` script
----------------------------------
+<hr/>
+
+## Installing the `make-data` script
 
 To install the `make-data` script using the command line clone this repository to the target system. Then enter its `cultexp` subdirectory, install the script's dependencies, and link the script to your profile:
 
@@ -72,8 +69,8 @@ $> npm install
 $> npm link
 ```
 
-Pretty-printed code documentation
----------------------------------
+## Pretty-printed code documentation
+
 Comments to the code of the ``make-data`` script are in JSDoc
 format. To generate an HTML view of the code, issue the command ``npm run doc`` in the ``cultexp`` repo directory:
 
@@ -96,8 +93,7 @@ Then view the pages by calling local port 8000 with a web browser:
 http://localhost:8000
 ```
 
-Installing the Legal Resource Registry
---------------------------------------
+## Installing the Legal Resource Registry
 
 The `make-data` conversion script relies on the Legal Resource Registry (LRR) to obtain court and jurisdiction codes. We will clone the LRR into a sibling directory to `citeproc-cite-service` above:
 
@@ -106,8 +102,7 @@ $> cd ../..
 $> git clone https://github.com/Juris-M/legal-resource-registry.git
 ```
 
-Setting up a jurisdiction
--------------------------
+## Setting up a jurisdiction
 
 To process a jurisdiction, create an empty directory and place the spreadsheet in it, saving the case listing in CSV format. Also (important!) copy all of the PDF attachment files for the jurisdiction into a single subdirectory named `files`.
 
@@ -142,8 +137,7 @@ Edit the configuration file to reflect the target jurisdiction and the absolute 
 }
 ```
 
-Preparing a court map
----------------------
+## Preparing a court map
 
 With the configuration file in place, run `make-data` again. The script will issue a string of warnings and generate a file `court-code-map.json`. This file will be read by `make-data` to map court names written into the spreadsheet to their respective court codes, optionally also setting a court division and case type, where that information is expressed in the spreadsheet entries. The file is formatted as a series of lists, ordered as follows:
 
@@ -213,8 +207,7 @@ Where the court description contains a note of the case type, add that as a four
 
 If courts are described in the spreadsheet that cannot be found in the LRR record of the jurisdiction, contact the Jurism data manager (Frank Bennett) to request an extension to the jurisdiction data.
 
-Preparing a court jurisdiction map
-----------------------------------
+## Preparing a court jurisdiction map
 
 In addition to the `court-code-map.json` file, the `make-data` script generates a file `court-jurisdiction-code.json`. Both files are used by the script to generate the final data for import into Jurism, and court codes set in the latter depend on the (edited) mapping lists in the former. It is therefore necessary to regenerate `court-jurisdiction-map.json` after completing edits to `court-code-map.json`. To regenerate the file, remove it from the directory and rerun `make-data`.
 
@@ -260,20 +253,17 @@ Note that the court code and jurisdiction code must be valid partners: in the LR
 
 If a valid jurisdiction for the given court cannot be found in the LRR, or if the jurisdiction itself cannot be found there, contact the Jurism data manager (Frank Bennett) to have the necessary changes made to the LRR jurisdiction records.
 
-Uploading data for a jurisdiction
----------------------------------
+## Uploading data for a jurisdiction
 
 Once the above steps have been completed, the `make-data` script will run without warnings. It will generate a file `import-me.json`, which is a valid CSL-JSON import object reflecting all of the entries in the spreadsheet.
 
 To upload data for the jurisdiction, import this file into a Jurism client in the usual way, and sync the library to the Zotero servers.
 
-Final preparation
------------------
+## Final preparation
 
 Before data for a jurisdiction is pulled to the front end for the first time, check with the Jurism data manager (Frank Bennett) to be sure that the citation format for the target jurisdiction has been defined.
 
-Footnotes
-=========
+# Footnotes
 
 [1] Spreadsheets have the following column headings (those set in *italics* are optional):
 
