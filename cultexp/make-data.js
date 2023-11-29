@@ -4,11 +4,18 @@ const path = require("path");
 const getopts = require("getopts");
 
 // See the csv-parse package for details
-var csvparse
+var csvparse;
 try {
     csvparse = require("csv-parse/sync");
 } catch(e) {
     csvparse = require("csv-parse/dist/cjs/sync.cjs");
+}
+
+var csvstringify;
+try {
+    csvstringify = require("csv-stringify/sync");
+} catch(e) {
+    csvstringify = require("csv-stringify/dist/cjs/sync.cjs");
 }
 
 // See the markdown-it package for details
@@ -28,7 +35,7 @@ var configPath = path.join(".", "make-data-config.json");
  * @param {string} e.message - error message
  */
 const handleError = (e) => {
-    // throw e;
+    throw e;
     console.log(`ERROR: ${e.message}`);
     process.exit();
 };
@@ -403,7 +410,7 @@ SetupTool.prototype.extractJurisdiction = function(line, currentJurisdictionCode
     }
     if (!this.jurisObj[currentJurisdictionCode].jurisdictions[line.jurisdiction]) {
         if (this.jurisdictionNames[line.jurisdiction]) {
-            line.jurisdiction = this.jurisdictionNames[jurisdiction];
+            line.jurisdiction = this.jurisdictionNames[line.jurisdiction];
         }
     }
 }
@@ -593,8 +600,11 @@ ColumnTool.prototype.colMapHints = {
  * @param {Object[]} headline - an array representing one spreadsheet line
  * @prop {Object[]} colMap - an array of column nicknames, in the
  *   order of the corresponding columns in the spreadsheet
+ * @prop {Object[]} headline - the original headline values in array
+ *   format, for use in dumping normalized content as CSV
  */
 ColumnTool.prototype.setColMap = function(headline) {
+    this.headline = headline;
     for (var i=0,ilen=headline.length;i<ilen;i++) {
         var val = headline[i] ? headline[i].toLowerCase() : "";
         var foundIt = false;
@@ -648,6 +658,18 @@ ColumnTool.prototype.loadLine = function(record) {
         }
     }
     return ret;
+}
+
+ColumnTool.prototype.unLoadLine = function(line) {
+    var unline = [];
+    for (var i=0; i<this.colMap.length; i++) {
+        unline.push("");
+    }
+    for (var i=0; i<this.colMap.length; i++) {
+        var key = this.colMap[i];
+        unline[i] = line[key];
+    }
+    return unline;
 }
 
 /**
@@ -958,7 +980,7 @@ Compositor.prototype.composeItem = function(line, suppressAbstract) {
     if (line.docketno) {
         var offset = -1;
         if (this.opts.lstripto) {
-            var str = setupTool.opts.lstripto;
+            var str = this.opts.lstripto;
             var offset = line.docketno.indexOf(str);
         }
         if (offset > -1) {
@@ -1085,6 +1107,25 @@ function run(opts) {
         ret.push(acc[id]);
     }
     fs.writeFileSync(path.join(".", "import-me.json"), JSON.stringify(ret, null, 2));
+
+    if (opts.c) {
+        var arrLines = [columnTool.headline];
+        for (var line of lines) {
+            arrLines.push(columnTool.unLoadLine(line));
+        }
+        var csv = csvstringify.stringify(arrLines);
+        var ext = opts.c.slice(-4);
+        if (ext !== ".csv" && ext !== ".CSV") {
+            var err = new Error("Argument to -c (--csv) must be a filename ending in .csv");
+            throw err;
+        }
+        if (fs.existsSync(opts.c)) {
+            var err = new Error(`CSV output file ${opts.c} already exists. Aborting.`);
+            throw err;
+        } else {
+            fs.writeFileSync(opts.c, csv);
+        }
+    }
     console.log("END");
 };
 
@@ -1092,13 +1133,14 @@ if (require.main === module) {
     
     const optParams = {
         alias: {
+            c : "csv",
             L : "lstripto",
             q : "quiet",
             Q : "Quiet",
             v : "version",
             h: "help"
         },
-        string: ["L"],
+        string: ["L=", "c="],
         boolean: ["q", "Q", "h"],
         unknown: option => {
             console.log("unknown option \"" +option + "\"");
@@ -1107,10 +1149,10 @@ if (require.main === module) {
     };
 
     const usage = "Usage: " + path.basename(process.argv[1]) + " [options]\n"
+      + "  -c, --csv FILENAME\n"
+      * "    Dump normalized data to the specified file, which must not exist"
       + "  -L, --lstripto STR\n"
       + "    Remove text from left of number field to designated string.\n"
-      + "  -N, --no-jurisdiction-no-court\n"
-      + "    If jurisdiction field is empty, set court field to empty also.\n"
       + "  -q, --quiet\n"
       + "    Suppress only empty-court warnings.\n"
       + "  -Q, --Quiet\n"
@@ -1131,6 +1173,14 @@ if (require.main === module) {
         var pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json")).toString());
         console.log(pkg.version);
         process.exit();
+    }
+
+    for (var opt of optParams.string) {
+        opt = opt.slice(0, opt.length-1);
+        if (typeof opts[opt] === "boolean") {
+            console.log(`Option -${opt} (--${optParams.alias[opt]}) requires a string argument`);
+            process.exit()
+        }
     }
 
     if (opts.h) {
