@@ -35,7 +35,7 @@ var configPath = path.join(".", "make-data-config.json");
  * @param {string} e.message - error message
  */
 const handleError = (e) => {
-    throw e;
+    // throw e;
     console.log(`ERROR: ${e.message}`);
     process.exit();
 };
@@ -274,7 +274,7 @@ SetupTool.prototype.addCourtMapEntry = function(line) {
 SetupTool.prototype.checkCourtMap = function() {
     var missingCodes = [], badCodes = [];
     for (var info of this.courtMap) {
-        if (info[1] === "") {
+        if (info[0] !== "" && info[1] === "") {
             missingCodes.push(info[0]);
         } else if (!this.jurisObj[this.defaultJurisdiction].courts[info[1]]) {
             badCodes.push(`${info[1]} (${info[0]})`);
