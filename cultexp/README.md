@@ -148,12 +148,12 @@ With the configuration file in place, run `make-data` again. The script will iss
 
 Open the relevant jurisdiction file in the LRR for reference (in this case, the file for Malta is `juris-mt-desc.json`). The `courts` section of the file contains the court codes recognized for the jurisdiction.
 
-Edit each entry in `court-code-map.json`, replacing the second element is each list with the appropriate court code. For example...
+Edit each entry in `court-code-map.json`, filling in the second element in each list with the appropriate court code. For example...
 
 ``` example
   [
     "Qorti Civili Prim Awla",
-    "Qorti Civili Prim Awla"
+    ""
   ]
 ```
 
@@ -171,7 +171,7 @@ Where the court description includes a court division, add a third element to th
 ``` example
   [
     "Qorti Civili (Sezzjoni tal-Familja)",
-    "Qorti Civili (Sezzjoni tal-Familja)"
+    ""
   ]
 ```
 
@@ -190,7 +190,7 @@ Where the court description contains a note of the case type, add that as a four
 ``` example
   [
     "Qorti Civili Prim Áwla (Gurisdizzjoni Kostituzzjonali)",
-    "Qorti Civili Prim Áwla (Gurisdizzjoni Kostituzzjonali)"
+    ""
   ]
 ```
 
