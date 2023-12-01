@@ -622,8 +622,8 @@ const opts = getopts(process.argv.slice(2), optParams);
 
 
 if (opts.v) {
-  var package = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json")).toString());
-  console.log(package.version);
+  var pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json")).toString());
+  console.log(pkg.version);
   process.exit();
 }
 
