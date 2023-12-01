@@ -30,13 +30,15 @@ const getStyle = require('./style').getStyle;
  */
 const callbacks = require('./callbacks').callbacks;
 
+/**
+ * @description Write only the message of an error to console.
+ */
 function handleError(e) {
-    console.log(e);
-    process.exit();
-}
-
-function abort(msg) {
-    console.log("zsyncdown ERROR: " + msg);
+    if (e.cause == 1) {
+        console.log(`Error: ${e.message}`);
+    } else {
+        console.log(e);
+    }
     process.exit();
 }
 
@@ -95,7 +97,8 @@ function getConfig(opts, keyCacheJson) {
     console.log(`Running with node version ${process.version}`);
     console.log("zsyncdown: using data directory " + dataPath);
     if (opts.i && fs.readdirSync(dataPath).length > 0) {
-        abort("the -i option can only be used in an empty data directory");
+        var e = new Error("the -i option can only be used in an empty data directory", {cause:1});
+        throw e;
     }
     var configFilePath = path.join(dataPath, "config.json");
     if (!fs.existsSync(configFilePath)) {
@@ -109,7 +112,8 @@ function getConfig(opts, keyCacheJson) {
             }, null, 2));
             process.exit();
         } else {
-            abort("config.json does not exist. To create a template to be edited, use the --init option.");
+            var e = new Error("config.json does not exist. To create a template to be edited, use the --init option.", {cause:1});
+            throw e;
         }
     }
     console.log("zsyncdown: opening config file at " + configFilePath);
@@ -122,7 +126,8 @@ function getConfig(opts, keyCacheJson) {
     cfg.fileExtFromKey = {};
 
     if (!fs.existsSync(cfg.dataPath)) {
-        abort("data directory does not exist");
+        var e = new Error("data directory does not exist", {cause:1});
+        throw e;
     }
     var keyCacheFile = path.join(cfg.dataPath, keyCacheJson);
     if (!fs.existsSync(keyCacheFile)) {
@@ -139,7 +144,8 @@ var Runner = function(opts, callbacks) {
     this.cfg = getConfig(opts, this.keyCacheJson);
     this.cfg.opts = opts;
     if (!this.cfg.access || !this.cfg.access.groupID || !this.cfg.access.libraryKey) {
-        abort("no access credentials found in config. See the README.");
+        var e = new Error("no access credentials found in config. See the README.", {cause:1});
+        throw e;
     }
     this.callbacks = callbacks;
     this.oldVersions = JSON.parse(fs.readFileSync(path.join(this.cfg.dataPath, this.keyCacheJson)));
@@ -226,13 +232,9 @@ Runner.prototype.unzip = async function(filePath, outputPath) {
 
 Runner.prototype.getVersions = async function(uriStub) {
     var ret = null;
-    try {
-        var ret = await this.callAPI(uriStub);
-        var libraryVersion = ret.header["last-modified-version"];
-        var keyVersions = JSON.parse(ret.text);
-    } catch (e) {
-        handleError(e);
-    }
+    var ret = await this.callAPI(uriStub);
+    var libraryVersion = ret.header["last-modified-version"];
+    var keyVersions = JSON.parse(ret.text);
     return {
         library: libraryVersion,
         keys: keyVersions
@@ -245,15 +247,11 @@ Runner.prototype.callVersions = async function() {
         items: null,
         attachments: null
     };
-    try {
-        var versions = await this.getVersions("/items/top?itemType=-note&format=versions");
-        ret.library = versions.library;
-        ret.items = versions.keys;
-        versions = await this.getVersions("/items?itemType=attachment&format=versions");
-        ret.attachments = versions.keys;
-    } catch (e) {
-        handleError(e);
-    }
+    var versions = await this.getVersions("/items/top?itemType=-note&format=versions");
+    ret.library = versions.library;
+    ret.items = versions.keys;
+    versions = await this.getVersions("/items?itemType=attachment&format=versions");
+    ret.attachments = versions.keys;
     return ret;
 };
 
@@ -264,15 +262,11 @@ Runner.prototype.updateVersionCache = function(libraryVersion) {
 
 Runner.prototype.getItems = async function(sublist) {
     var ret = null;
-    try {
-        var keys = sublist.join(",");
-        var uriStub = "/items?itemKey=" + keys;
-        ret = await this.callAPI(uriStub);
-        ret = JSON.parse(ret.text);
-        ret = ret.map(o => o.data);
-    } catch (e) {
-        handleError(e);
-    }
+    var keys = sublist.join(",");
+    var uriStub = "/items?itemKey=" + keys;
+    ret = await this.callAPI(uriStub);
+    ret = JSON.parse(ret.text);
+    ret = ret.map(o => o.data);
     return ret;
 }
 
@@ -301,20 +295,16 @@ Runner.prototype.getUpdateSpec = async function(newVersions) {
 
 Runner.prototype.extractTag = function(arr, prefix, defaultValue) {
     var ret = defaultValue;
-    try {
-        if (prefix.slice(-1) !== ":") {
-            throw new Error("Invalid prefix spec: must end in a colon (:)");
+    if (prefix.slice(-1) !== ":") {
+        throw new Error("Invalid prefix spec: must end in a colon (:)");
+    }
+    var offset = prefix.length;
+    for (var i=arr.length-1;i>-1;i--) {
+        var tag = arr[i].tag ? arr[i].tag : arr[i];
+        if (tag.slice(0, offset) === prefix) {
+            ret = tag.slice(offset); 
         }
-        var offset = prefix.length;
-        for (var i=arr.length-1;i>-1;i--) {
-            var tag = arr[i].tag ? arr[i].tag : arr[i];
-            if (tag.slice(0, offset) === prefix) {
-                ret = tag.slice(offset); 
-            }
-            arr = arr.slice(0, i).concat(arr.slice(i+1));
-        }
-    } catch (e) {
-        handleError(e);
+        arr = arr.slice(0, i).concat(arr.slice(i+1));
     }
     return ret;
 }
@@ -328,48 +318,45 @@ Runner.prototype.extractCountry = function(jurisdiction) {
 }
 
 Runner.prototype.buildSiteItem = function(item) {
-    try {
-        var itemKey = item.key;
-        var itemVersion = item.version;
-        this.oldVersions.items[itemKey] = itemVersion;
-        delete item.key;
-        delete item.version;
-        delete item.dateAdded;
-        delete item.dateModified;
-        var cslItemZotero = zoteroToCsl(item);
-        // Okay. This is ugly. zoteroToCsl straight off npm doesn't
-        // convert string dates to the CSL array form, so we hack in
-        // a fix for those entries here.
-        for (var fieldName of CSL_DATE_VARIABLES) {
-            if ("string" === typeof cslItemZotero[fieldName]) {
-                cslItemZotero[fieldName] = DateParser.parseDateToArray(cslItemZotero[fieldName]);
-            }
+    var itemKey = item.key;
+    var itemVersion = item.version;
+    this.oldVersions.items[itemKey] = itemVersion;
+    delete item.key;
+    delete item.version;
+    delete item.dateAdded;
+    delete item.dateModified;
+    var cslItemZotero = zoteroToCsl(item);
+    // Okay. This is ugly. zoteroToCsl straight off npm doesn't
+    // convert string dates to the CSL array form, so we hack in
+    // a fix for those entries here.
+    for (var fieldName of CSL_DATE_VARIABLES) {
+        if ("string" === typeof cslItemZotero[fieldName]) {
+            cslItemZotero[fieldName] = DateParser.parseDateToArray(cslItemZotero[fieldName]);
         }
-        
-        // Okay. This is also ugly. zoteroToJurism() modifies the
-        // object in place, as well as returning it as result.
-        // If it is not recomposed here, cslItemZotero will be
-        // unencoded as a side effect.
-        var cslItemJurism = zoteroToJurism({data:item}, JSON.parse(JSON.stringify(cslItemZotero)));
-        var cslItem = cslItemJurism;
-        var cslJsonItem = cslItemZotero;
-        var relatedItems = [];
-        if (item.relations["dc:relation"]) {
-            relations = item.relations["dc:relation"];
-            if (typeof relations === "string") {
-                relations = [relations];
-            }
-            relatedItems = relations.map(s => s.replace(/^.*\//, ""));
-        }
-        cslItemZotero.id = itemKey;
-        cslItemJurism.id = itemKey;
-        cslItem.id = itemKey;
-        this.style.sys.items = JSON.parse("{\"" + itemKey + "\": " + JSON.stringify(cslItemJurism) + "}");
-        this.style.updateItems([itemKey]);
-        var country = this.extractCountry(cslItemJurism.jurisdiction);
-    } catch (e) {
-        handleError(e);
     }
+    
+    // Okay. This is also ugly. zoteroToJurism() modifies the
+    // object in place, as well as returning it as result.
+    // If it is not recomposed here, cslItemZotero will be
+    // unencoded as a side effect.
+    var cslItemJurism = zoteroToJurism({data:item}, JSON.parse(JSON.stringify(cslItemZotero)));
+    var cslItem = cslItemJurism;
+    var cslJsonItem = cslItemZotero;
+    var relatedItems = [];
+    if (item.relations["dc:relation"]) {
+        relations = item.relations["dc:relation"];
+        if (typeof relations === "string") {
+            relations = [relations];
+        }
+        relatedItems = relations.map(s => s.replace(/^.*\//, ""));
+    }
+    cslItemZotero.id = itemKey;
+    cslItemJurism.id = itemKey;
+    cslItem.id = itemKey;
+    this.style.sys.items = JSON.parse("{\"" + itemKey + "\": " + JSON.stringify(cslItemJurism) + "}");
+    this.style.updateItems([itemKey]);
+    var country = this.extractCountry(cslItemJurism.jurisdiction);
+
     var citation = this.style.makeCitationCluster([{"id":itemKey}]);
     console.log(`citation: ${citation}`);
     if (relatedItems.length === 0) {
@@ -439,57 +426,50 @@ Runner.prototype.getFulltext = async function(itemKey) {
         if (e.status == 404) {
             res = false;
         } else {
-            handleError(e, itemKey);
+            var e = new Error(`failure attempting to fetch full text of file with key ${itemKey}`, {cause:1});
+            throw e;
         }
     }
     return res;
 }
 
 Runner.prototype.doDeletes = async function(updateSpec) {
-    try {
-        await this.callbacks.attachments.del.call(this.cfg, updateSpec.attachments.del);
-        for (var attachmentKey of updateSpec.attachments.del) {
-            delete this.oldVersions.attachments[attachmentKey];
-        }
-        await this.callbacks.items.del.call(this.cfg, updateSpec.items.del);
-        for (var itemKey of updateSpec.items.del) {
-            delete this.oldVersions.items[itemKey];
-        }
-    } catch (e) {
-        handleError(e);
+    await this.callbacks.attachments.del.call(this.cfg, updateSpec.attachments.del);
+    for (var attachmentKey of updateSpec.attachments.del) {
+        delete this.oldVersions.attachments[attachmentKey];
+    }
+    await this.callbacks.items.del.call(this.cfg, updateSpec.items.del);
+    for (var itemKey of updateSpec.items.del) {
+        delete this.oldVersions.items[itemKey];
     }
 }
 
 Runner.prototype.doAddUpdateItems = async function(updateSpec) {
     var transactionSize = 50;
     console.log(`Adding and updating item metadata ...`);
-    try {
-        var addSublists = [];
-        while (updateSpec.items.add.length) {
-            addSublists.push(updateSpec.items.add.slice(0, transactionSize));
-            updateSpec.items.add = updateSpec.items.add.slice(transactionSize);
+    var addSublists = [];
+    while (updateSpec.items.add.length) {
+        addSublists.push(updateSpec.items.add.slice(0, transactionSize));
+        updateSpec.items.add = updateSpec.items.add.slice(transactionSize);
+    }
+    for (var sublist of addSublists) {
+        var items = await this.getItems(sublist);
+        for (var item of items) {
+            var siteItem = this.buildSiteItem(item);
+            await this.callbacks.items.add.call(this.cfg, siteItem);
         }
-        for (var sublist of addSublists) {
-            var items = await this.getItems(sublist);
-            for (var item of items) {
-                var siteItem = this.buildSiteItem(item);
-                await this.callbacks.items.add.call(this.cfg, siteItem);
-            }
+    }
+    var modSublists = [];
+    while (updateSpec.items.mod.length) {
+        modSublists.push(updateSpec.items.mod.slice(0, transactionSize));
+        updateSpec.items.mod = updateSpec.items.mod.slice(transactionSize);
+    }
+    for (var sublist of modSublists) {
+        var items = await this.getItems(sublist);
+        for (var item of items) {
+            var siteItem = this.buildSiteItem(item);
+            await this.callbacks.items.mod.call(this.cfg, siteItem);
         }
-        var modSublists = [];
-        while (updateSpec.items.mod.length) {
-            modSublists.push(updateSpec.items.mod.slice(0, transactionSize));
-            updateSpec.items.mod = updateSpec.items.mod.slice(transactionSize);
-        }
-        for (var sublist of modSublists) {
-            var items = await this.getItems(sublist);
-            for (var item of items) {
-                var siteItem = this.buildSiteItem(item);
-                await this.callbacks.items.mod.call(this.cfg, siteItem);
-            }
-        }
-    } catch (e) {
-        handleError(e);
     }
 }
 
@@ -503,113 +483,105 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
     //
     console.log(`Adding and updating attachment metadata ...`);
     var filesDir = path.join(this.cfg.dirs.topDir, "files");
-    try {
-        var attachmentNameFromKey = {};
-        var addSublists = [];
-        while (updateSpec.attachments.add.length) {
-            addSublists.push(updateSpec.attachments.add.slice(0, transactionSize));
-            updateSpec.attachments.add = updateSpec.attachments.add.slice(transactionSize);
-        }
-        for (var sublist of addSublists) {
-            var attachments = await this.getItems(sublist);
-            for (var attachment of attachments) {
-                var fulltext = await this.getFulltext(attachment.key);
-                if (!fulltext) {
-                    // Triggers mod on next update if item still exists
-                    this.oldVersions.attachments[attachment.key] = 0;
-                }
-                var siteAttachment = await this.buildSiteAttachment(attachment, fulltext);
-		        attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
-                await this.callbacks.attachments.add.call(this.cfg, siteAttachment);
-            }
-        }
-        var modSublists = [];
-        while (updateSpec.attachments.mod.length) {
-            modSublists.push(updateSpec.attachments.mod.slice(0, transactionSize));
-            updateSpec.attachments.mod = updateSpec.attachments.mod.slice(transactionSize);
-        }
-        for (var sublist of modSublists) {
-            var attachments = await this.getItems(sublist);
-            for (var attachment of attachments) {
-                var fulltext = await this.getFulltext(attachment.key);
-                if (!fulltext) {
-                    // Triggers mod on next update if item still exists
-                    this.oldVersions.attachments[attachment.key] = 0;
-                }
-                var siteAttachment = await this.buildSiteAttachment(attachment, fulltext);
-		        attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
-                await this.callbacks.attachments.mod.call(this.cfg, siteAttachment);
-            }
-        }
-        var attachmentsDone = {};
-        console.log(`Adding and updating attachment files ...`);
-        for (var attachmentID of updateSpec.attachments.mod) {
-            // Download the file for a modified attachment ID unconditionally if the metadata has changed
-            if (this.newVersions[attachmentID] > this.oldVersions[attachmentID]) {
-                // true as second argument expects attachment file content
-                var response = await this.callAPI("/items/" + attachmentID + "/file", true);
-	            var info = await this.getRealBufferAndExt(response.body);
-                await this.callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
-                attachmentsDone[attachmentID] = true;
-            }
-        };
-        for (var attachmentID in this.newVersions.attachments) {
-            if (attachmentsDone[attachmentID]) continue;
-            var attachmentExists = await this.callbacks.files.exists.call(this.cfg, attachmentID);
-            if (attachmentExists === false) {
-                // true as second argument expects attachment file content
-                var response = await this.callAPI("/items/" + attachmentID + "/file", true);
-	            var info = await this.getRealBufferAndExt(response.body);
-                await this.callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
-            };
-        }
-        await this.callbacks.files.purge.call(this.cfg, updateSpec.attachments.del);
-    } catch (e) {
-        handleError(e);
+    var attachmentNameFromKey = {};
+    var addSublists = [];
+    while (updateSpec.attachments.add.length) {
+        addSublists.push(updateSpec.attachments.add.slice(0, transactionSize));
+        updateSpec.attachments.add = updateSpec.attachments.add.slice(transactionSize);
     }
+    for (var sublist of addSublists) {
+        var attachments = await this.getItems(sublist);
+        for (var attachment of attachments) {
+            var fulltext = await this.getFulltext(attachment.key);
+            if (!fulltext) {
+                // Triggers mod on next update if item still exists
+                this.oldVersions.attachments[attachment.key] = 0;
+            }
+            var siteAttachment = await this.buildSiteAttachment(attachment, fulltext);
+		    attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
+            await this.callbacks.attachments.add.call(this.cfg, siteAttachment);
+        }
+    }
+    var modSublists = [];
+    while (updateSpec.attachments.mod.length) {
+        modSublists.push(updateSpec.attachments.mod.slice(0, transactionSize));
+        updateSpec.attachments.mod = updateSpec.attachments.mod.slice(transactionSize);
+    }
+    for (var sublist of modSublists) {
+        var attachments = await this.getItems(sublist);
+        for (var attachment of attachments) {
+            var fulltext = await this.getFulltext(attachment.key);
+            if (!fulltext) {
+                // Triggers mod on next update if item still exists
+                this.oldVersions.attachments[attachment.key] = 0;
+            }
+            var siteAttachment = await this.buildSiteAttachment(attachment, fulltext);
+		    attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
+            await this.callbacks.attachments.mod.call(this.cfg, siteAttachment);
+        }
+    }
+    var attachmentsDone = {};
+    console.log(`Adding and updating attachment files ...`);
+    for (var attachmentID of updateSpec.attachments.mod) {
+        // Download the file for a modified attachment ID unconditionally if the metadata has changed
+        if (this.newVersions[attachmentID] > this.oldVersions[attachmentID]) {
+            // true as second argument expects attachment file content
+            var response = await this.callAPI("/items/" + attachmentID + "/file", true);
+	        var info = await this.getRealBufferAndExt(response.body);
+            await this.callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
+            attachmentsDone[attachmentID] = true;
+        }
+    };
+    for (var attachmentID in this.newVersions.attachments) {
+        if (attachmentsDone[attachmentID]) continue;
+        var attachmentExists = await this.callbacks.files.exists.call(this.cfg, attachmentID);
+        if (attachmentExists === false) {
+            // true as second argument expects attachment file content
+            var response = await this.callAPI("/items/" + attachmentID + "/file", true);
+	        var info = await this.getRealBufferAndExt(response.body);
+            await this.callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
+        };
+    }
+    await this.callbacks.files.purge.call(this.cfg, updateSpec.attachments.del);
 }
 
 Runner.prototype.run = async function() {
-    try {
-        await this.callbacks.init.call(this.cfg);
-        var newVersions = await this.callVersions();
-        this.newVersions = newVersions;
+    await this.callbacks.init.call(this.cfg);
+    var newVersions = await this.callVersions();
+    this.newVersions = newVersions;
 
-        var updateSpec = await this.getUpdateSpec(newVersions);
+    var updateSpec = await this.getUpdateSpec(newVersions);
 
-        // Open a DB transaction if required
-        await this.callbacks.openTransaction.call(this.cfg);
-        
-        // Delete things for deletion, beginning with attachments
-        await this.doDeletes(updateSpec);
-        
-        // Works in sets of 50
-        await this.doAddUpdateItems(updateSpec);
+    // Open a DB transaction if required
+    await this.callbacks.openTransaction.call(this.cfg);
+    
+    // Delete things for deletion, beginning with attachments
+    await this.doDeletes(updateSpec);
+    
+    // Works in sets of 50
+    await this.doAddUpdateItems(updateSpec);
 
-        // Works in sets of 25
-        await this.doAddUpdateAttachments(updateSpec);
+    // Works in sets of 25
+    await this.doAddUpdateAttachments(updateSpec);
 
-        // Close a DB transaction if required
-        await this.callbacks.closeTransaction.call(this.cfg);
+    // Close a DB transaction if required
+    await this.callbacks.closeTransaction.call(this.cfg);
 
-        // Memo current library and item versions
-        this.updateVersionCache(newVersions.library);
+    // Memo current library and item versions
+    this.updateVersionCache(newVersions.library);
 
-        // Finally, yeet placeholder PDFs if requested
-        if (this.cfg.opts.y) {
-            var filesDir = path.join(this.cfg.dirs.topDir, "files");
-            for (var info of this.emptyPdfInfo) {
-                var filePath = path.join(filesDir, `${info.key}.pdf`);
-                if (fs.existsSync(filePath)) {
-                    console.log(`removing empty placeholder PDF file: ${info.title} [${info.key}]`);
-                    fs.unlinkSync(filePath);
-                }
+    // Finally, yeet placeholder PDFs if requested
+    if (this.cfg.opts.y) {
+        var filesDir = path.join(this.cfg.dirs.topDir, "files");
+        for (var info of this.emptyPdfInfo) {
+            var filePath = path.join(filesDir, `${info.key}.pdf`);
+            if (fs.existsSync(filePath)) {
+                console.log(`removing empty placeholder PDF file: ${info.title} [${info.key}]`);
+                fs.unlinkSync(filePath);
             }
         }
-        console.log("Done!");
-    } catch (e) {
-        handleError(e);
     }
+    console.log("Done!");
 }
 
 const optParams = {
@@ -623,7 +595,8 @@ const optParams = {
     string: ["d"],
     boolean: ["h", "i", "y", "v"],
     unknown: option => {
-        abort("unknown option \"" +option + "\"");
+        var e = new Error("unknown option \"" +option + "\"", {cause:1});
+        handleError(e);
     }
 };
 
@@ -652,12 +625,13 @@ if (opts.h) {
 }
 
 function isDir(pth) {
-    var s = fs.statSync(opts.d);
+    var s = fs.statSync(pth);
     return s.isDirectory();
 }
 if (opts.d && (!path.isAbsolute(opts.d) || !fs.existsSync(opts.d) || !isDir(opts.d))) {
-    abort("when used, option -d must be set to an existing absolute directory path");
+    var e = new Error("when used, option -d must be set to an existing absolute directory path", {cause:1});
+    handleError(e);
 }
 
 var runner = new Runner(opts, callbacks);
-runner.run();
+runner.run().catch( e => handleError(e) );
