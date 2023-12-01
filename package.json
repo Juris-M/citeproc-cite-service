@@ -3,10 +3,12 @@
     "version": "2.1.73",
     "description": "A limited read-only sync of items and attachments from a Jurism/Zotero library",
     "main": "index.js",
-    "scripts": {},
+    "scripts": {
+        "documentation": "./node_modules/.bin/jsdoc -c ./etc/jsdoc-config.json -R ./make-data/README.md -d docs/make-data ./make-data/index.js; ./node_modules/.bin/jsdoc -c ./etc/jsdoc-config.json -R ./README.md -d ./docs/zsyncdown ./index.js;"
+    },
     "bin": {
         "zsyncdown": "./index.js",
-        "zcleanup": "./cleanup.js"
+        "make-data": "./make-data/index.js"
     },
     "files": [
         "README.md",
@@ -32,10 +34,12 @@
     "dependencies": {
         "citeproc": "^2.4.62",
         "citeproc-abbrevs": "^1.1.61",
-        "citeproc-juris-modules": "^1.0.41",
         "citeproc-locales": ">=1.0.2",
+        "csv-parse": "^5.5.2",
+        "csv-stringify": "^6.4.4",
         "file-type": "^18.5.0",
         "getopts": "^2.3.0",
+        "jsdoc": "^4.0.2",
         "regenerator-runtime": "^0.13.9",
         "superagent": "^8.1.2",
         "tmp": "^0.2.1",
