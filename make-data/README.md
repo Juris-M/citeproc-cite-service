@@ -23,7 +23,7 @@ service for public consumption.
 Because the spreadsheet data model does not provide a record of the
 version level of individual lines or cells, the entire spreadsheet
 (typically containing all records for a single jurisdiction) is
-treated as a unit for purposes of adding, and for editing, any content
+treated as a unit for purposes of adding or editing any content
 to be published to the front end.
 
 The following are the steps needed to provide new *or modified*
@@ -32,8 +32,8 @@ content to the front-end service:
 1.  Prepare (or edit) an Excel spreadsheet with the appropriate
     columns, with an entry for each document or case to be added;
 2.  Save the file, and also save it in CSV format;
-3.  Prepare a set of files named to correspond to CultExp document
-    codes and place them in a ``files`` subdirectory immediately
+3.  Place a set of files named to correspond to CultExp document
+    codes in a ``files`` subdirectory immediately
     below the CSV file to be processed;
 4.  Use the `make-data` script documented here to generate a CSL JSON
     file (`import-me.json`), making amendments to the two ``court-*``
@@ -47,8 +47,8 @@ content to the front-end service:
     this repository);
 10. Perform whatever incantations are used to move retrieved data to the front-end service.
 
-Note that this full set of operations is required for *any* change
-to item content.
+This full set of operations is required for any change to item content
+on the front end of the service.
 
 ## Installing `node` and `npm`
 
@@ -60,11 +60,13 @@ The `make-data` conversion tool is a `node` script, so `node` must be installed 
 
 ## Installing the `make-data` script
 
-To install the `make-data` script using the command line clone this repository to the target system. Then enter its `cultexp` subdirectory, install the script's dependencies, and link the script to your profile:
+Activation of the `make-data` script is included when the steps for
+installing and activating the ``zsyncdown`` "bridge" script are
+followed. To wit:
 
 ``` example
-$> git clone https://github.com/Juris-M/citeproc-cite-service.git
-$> cd citeproc-cite-service/cultexp
+$> git clone --recursive https://github.com/Juris-M/citeproc-cite-service.git
+$> cd citeproc-cite-service
 $> npm install
 $> npm link
 ```
@@ -72,18 +74,17 @@ $> npm link
 ## Pretty-printed code documentation
 
 Comments to the code of the ``make-data`` script are in JSDoc
-format. To generate an HTML view of the code, issue the command ``npm run doc`` in the ``cultexp`` repo directory:
+format. To generate an HTML view of the code, issue the command ``npm run documentation`` in the root directory of this repository:
 
 ```
-> cd cultexp
-> npm run doc
+> npm run documentation
 ```
 
-Serve the documentation by spinning up a local
-webserver in the ``out`` subdirectory. For example, using Python:
+The documentation can be served locally by spinning up a webserver in
+the ``docs`` subdirectory. For example, using Python:
 
 ```
-> cd out
+> cd docs
 > python3 -m http.server 8000
 ```
 
@@ -91,6 +92,14 @@ Then view the pages by calling local port 8000 with a web browser:
 
 ```
 http://localhost:8000
+```
+
+The pages are also available to view on GitHub pages (but note that
+these are updated only when the refreshed documentation files are
+committed and pushed to GitHub):
+
+```
+https://juris-m.github.io/citeproc-cite-service
 ```
 
 ## Installing the Legal Resource Registry
@@ -205,7 +214,9 @@ Where the court description contains a note of the case type, add that as a four
   ]
 ```
 
-If courts are described in the spreadsheet that cannot be found in the LRR record of the jurisdiction, contact the Jurism data manager (Frank Bennett) to request an extension to the jurisdiction data.
+If courts are described in the spreadsheet that cannot be found in the
+LRR record of the jurisdiction, contact the back-end data manager to
+request an extension to the jurisdiction data.
 
 ## Preparing a court jurisdiction map
 
@@ -240,7 +251,9 @@ Leaving the `qc:Gozo` key untouched, and referring to the LRR, we enter the corr
 }
 ```
 
-Note that the court code and jurisdiction code must be valid partners: in the LRR, the court code must appear in the `courts` array under the given jurisdiction code. For example:
+Note that the court code and jurisdiction code must be valid partners:
+in the LRR, the court code must appear in the `courts` array under the
+given jurisdiction code. For example:
 
 ``` example
 "mt:gozo": {
@@ -251,17 +264,26 @@ Note that the court code and jurisdiction code must be valid partners: in the LR
 }
 ```
 
-If a valid jurisdiction for the given court cannot be found in the LRR, or if the jurisdiction itself cannot be found there, contact the Jurism data manager (Frank Bennett) to have the necessary changes made to the LRR jurisdiction records.
+If a valid jurisdiction for the given court cannot be found in the
+LRR, or if the jurisdiction itself cannot be found there, contact the
+back-end data manager to have the necessary changes made
+to the LRR jurisdiction records.
 
 ## Uploading data for a jurisdiction
 
-Once the above steps have been completed, the `make-data` script will run without warnings. It will generate a file `import-me.json`, which is a valid CSL-JSON import object reflecting all of the entries in the spreadsheet.
+Once the above steps have been completed, the `make-data` script will
+run without warnings. It will generate a file `import-me.json`, which
+is a valid CSL-JSON import object reflecting all of the entries in the
+spreadsheet.
 
-To upload data for the jurisdiction, import this file into a Jurism client in the usual way, and sync the library to the Zotero servers.
+To upload data for the jurisdiction, import this file into a Jurism
+client in the usual way, and sync the library to the Zotero servers.
 
 ## Final preparation
 
-Before data for a jurisdiction is pulled to the front end for the first time, check with the Jurism data manager (Frank Bennett) to be sure that the citation format for the target jurisdiction has been defined.
+Before data for a jurisdiction is pulled to the front end for the
+first time, check with the back-end data manager to be sure that the
+citation format for the target jurisdiction has been defined.
 
 # Footnotes
 

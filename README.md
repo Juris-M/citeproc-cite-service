@@ -90,7 +90,6 @@ in the data directory, with content like this:
 ```javascript
 {
     "dataPath": "/option/data-dir/or/cwd",
-    "dataMode": "CSL-M",
     "access": {
         "groupID": false,
         "libraryKey": false
@@ -128,26 +127,25 @@ the header can be ignored, they will be stripped before JSON processing):
 Once configuration is complete, running the utility will pull all items and their attachments
 from the target Zotero group, reporting API calls to  the console.
 ``` bash
-    bash> zsyncdown
-    zsyncdown: using data directory /option/data-dir/or/cwd
-    zsyncdown: opening config file at /option/data-dir/or/cwd/config.json
-    zsyncdown: Using persistent cache file at /option/data-dir/or/cwd/keyCache.json
-    syncDown: writing sync update into /option/data-dir/or/cwd/tmp/updates
-    + CALL https://api.zotero.org/groups/123456/items/top?itemType=-note&format=versions
-    + CALL https://api.zotero.org/groups/123456/items?itemType=attachment&format=versions
-    + CALL https://api.zotero.org/groups/123456/fulltext?since=0
-    + CALL https://api.zotero.org/groups/123456/items?itemKey=PHRY5VHZ,7D9KFCZU,Y4LHY5LW,JH29MAW8
-    + CALL https://api.zotero.org/groups/123456/items?itemKey=E88RYTR6,Q7WIUBSI,ZP96EPPB,AJW7NHLQ
-    + CALL https://api.zotero.org/groups/123456/items/E88RYTR6/fulltext
-    + CALL https://api.zotero.org/groups/123456/items/Q7WIUBSI/fulltext
-    + CALL https://api.zotero.org/groups/123456/items/ZP96EPPB/fulltext
-    + CALL https://api.zotero.org/groups/123456/items/AJW7NHLQ/fulltext
-    Done!
+    > zsyncdown
+      Running with node version v18.17.1
+      zsyncdown: using data directory /media/storage/src/JM/citeproc-cite-service/tmp
+      zsyncdown: opening config file at /media/storage/src/JM/citeproc-cite-service/tmp/config.json
+      zsyncdown: Using persistent cache file at /media/storage/src/JM/citeproc-cite-service/tmp/keyCache.json
+      syncDown: writing sync update into /media/storage/src/JM/citeproc-cite-service/tmp/updates
+      Adding and updating item metadata ...
+      citation: Helsingin hovioikeus [HO] 4.2019 (Finland)
+      citation: Korkein hallinto-oikeus [KHO] 10.2016 KHO:2016:151 (Finland)
+      Adding and updating attachment metadata ...
+      Adding and updating attachment files ...
+      Done!
+    >
 ```
-The Zotero library version and the downloaded item keys and versions
-are recorded in the data directory in a file `keyCache.json`. The
-contents of this file are used to limit API calls on subsequent runs
-of the utility.  The callback functions in the distributed
+The Zotero library version and the downloaded item keys and versions are 
+recorded in the data directory in a file `keyCache.json`. The contents 
+of this file are used to limit API calls on subsequent runs
+of the utility to items and attachments that have been added or 
+modified since the previous run.  The callback functions in the distributed
 `callbacks-sample.js` file will write update information into a
 subdirectory `updates`, with the following structure:
 ```text
@@ -196,8 +194,8 @@ run the utility with the `-f` option:
 This operation will take some time to complete.
 
 How this data is merged into the local data store will vary depending
-on the local environment. If desired, the functions in `callbacks.js`
-can be modified to perform direct database update operations.
+on the local environment. The functions in `callbacks.js`
+should be modified to perform direct database update operations.
 
 # Data structures
 
@@ -260,58 +258,70 @@ Item update objects have six keys:
 * `cslItem`: An object with keys and values that follow the
   [CSL Specification](http://docs.citationstyles.org/en/1.0.1/specification.html)
   and [CSL-M: extensions to CSL](https://citeproc-js.readthedocs.io/en/latest/csl-m/index.html).
+* `cslJsonItem`: An object with keys and values that follow the
+  [CSL Specification](http://docs.citationstyles.org/en/1.0.1/specification.html),
+  with fields added by [CSL-M: extensions to CSL](https://citeproc-js.readthedocs.io/en/latest/csl-m/index.html) encoded for Zotero compatibility.
 
 The following is a sample item update object for a legal case:
 
 ```javascript
 {
-  "key": "JH29MAW8",
-  "citation": "Uzasadnienie, SR dla Warszawy-Mokotowa w Warszawie, October 19, 2016, III K 1053/14",
-  "country": "PL",
+  "key": "9V3WFNEG",
+  "citation": "Helsingin hovioikeus [HO] 4.2019 (Finland)",
+  "country": "FI",
   "tags": [
     {
-      "tag": "Criminal"
+      "tag": "AL:constitutional law"
+    },
+    {
+      "tag": "KW:Discrimination"
+    },
+    {
+      "tag": "KW:Niqab"
+    },
+    {
+      "tag": "KW:Religious symbols"
+    },
+    {
+      "tag": "cn:FI"
     }
   ],
   "relatedItems": [],
   "cslItem": {
     "type": "legal_case",
-    "abstract": "Description of content",
-    "authority": "sr",
-    "number": "III K 1053/14",
+    "abstract": "The plaintiff ...",
+    "authority": "ho",
     "issued": {
       "date-parts": [
         [
-          2016,
-          10,
-          19
+          2019,
+          4
         ]
       ]
     },
-    "language": "pl",
+    "language": "fi",
     "note": "",
     "multi": {
       "main": {},
       "_keys": {}
     },
-    "call-number": "PL351",
-    "jurisdiction": "pl:warsaw:warsaw:mokotow",
-    "genre": "Uzasadnienie",
-    "id": "JH29MAW8"
+    "call-number": "FI044A",
+    "jurisdiction": "fi:helsinki",
+    "id": "9V3WFNEG"
+  },
+  "cslJsonItem": {
+    "type": "legal_case",
+    "authority": "ho",
+    "issued": {
+      "date-parts": [
+        [
+          2019,
+          4
+        ]
+      ]
+    },
+    "language": "fi",
+    "note": "mlzsync1:0067{\"extrafields\":{\"jurisdiction\":\"011fi:helsinkiFinland|FI|Uusimaa\"}}"
   }
-}
-```
-
-## Attachments
-
-The following is a sample update object for an attachment to the sample item above:
-
-```javascript
-{
-  "key": "AJW7NHLQ",
-  "parentKey": "JH29MAW8",
-  "language": "pl",
-  "filename": "PL351.pdf",
-  "fulltext": "III K 1053/14 - uzasadnienie Sąd Rejonowy ... Polityka cookiesIndeksyKanały RSS\n\n"
 }
 ```
