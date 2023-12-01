@@ -2,8 +2,9 @@ const fs = require("fs");
 const path = require("path");
 const CSL = require("citeproc");
 const localesPath = require("citeproc-locales");
-const modulesPath = require("citeproc-juris-modules");
 const getAbbrevs = require("citeproc-abbrevs").getAbbrevs;
+
+const modulesPath = path.join(path.dirname(require.main.filename), "style-modules");
 
 var Sys = function(config){
     this.config = config;
