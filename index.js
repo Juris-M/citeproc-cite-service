@@ -9,8 +9,44 @@ const tmp = require("tmp");
 tmp.setGracefulCleanup();
 
 const DateParser = require("citeproc").DateParser;
+const zoteroToCsl = require('zotero-to-csl');
+const zoteroToJurism = require('zotero2jurismcsl').convert;
 
+/** @function getStyle
+ * @description Instantiates the citation processor.
+ * @returns {Object}
+ */
+const getStyle = require('./style').getStyle;
 
+/** @namespace callbacks
+ * @description Container carrying functions for performing
+ *   a downstream sync into the target system.
+ * @prop {} init - async function to set the value of initial parameters
+ * @prop {} openTransaction - async function of open a database transaction
+ * @prop {} closeTransaction - async function to close a database transaction
+ * @prop {} items - async functions to add, delete, or modify item metadata
+ * @prop {} attachments - async functions to add, delete, or modify attachment metadata
+ * @prop {} files - async functions to add, purge, or check for the existence of files
+ */
+const callbacks = require('./callbacks').callbacks;
+
+function handleError(e) {
+    console.log(e);
+    process.exit();
+}
+
+function abort(msg) {
+    console.log("zsyncdown ERROR: " + msg);
+    process.exit();
+}
+
+/** @function newUpdateSpec
+ * @description Return a container for metadata necessary for downstream sync.
+ * @prop {Object} items - parent-item metadata
+ * @prop {Object} attachments - attachment metadata
+ * @prop {Object} files - all files corresponding to downloaded attachment metadata files
+ * @return {Object}
+ */
 const newUpdateSpec = () => {
     var template = {
         items: {
@@ -28,12 +64,10 @@ const newUpdateSpec = () => {
     return JSON.parse(JSON.stringify(template))
 }
 
-const zoteroToCsl = require('zotero-to-csl');
-const zoteroToJurism = require('zotero2jurismcsl').convert;
-const getStyle = require('./style').getStyle;
-const callbacks = require('./callbacks').callbacks;
-
-// This list does not include CSL-M extended dates.
+/** @type Object[]
+ * @description Array of CSL date variable names. Does not
+ *   include date variables added by CSL-M.
+ */
 const CSL_DATE_VARIABLES = [
     "accessed",
     "available-date",
@@ -43,6 +77,15 @@ const CSL_DATE_VARIABLES = [
     "submitted"
 ];
 
+/**
+ * @description This is a messy monolith. Load the "config.json"
+ *   configuration file from the data directory. If no file exists
+ *   and the -i (--init) option is
+ *   set, create one.  If loading is successful, set parameters,
+ *   create a keyCache file if one does not exist, and return configuration
+ *   as an object.
+ * @returns {Object}
+ */
 function getConfig(opts, keyCacheJson) {
     if (opts.d) {
         var dataPath = opts.d;
@@ -55,36 +98,26 @@ function getConfig(opts, keyCacheJson) {
         abort("the -i option can only be used in an empty data directory");
     }
     var configFilePath = path.join(dataPath, "config.json");
-    console.log("zsyncdown: opening config file at " + configFilePath);
     if (!fs.existsSync(configFilePath)) {
         if (opts.i) {
             fs.writeFileSync(configFilePath, "// Configuration file for citeproc-cite-service\n// For details, see README.md or https://www.npmjs.com/package/citeproc-cite-service\n" + JSON.stringify({
                 dataPath: dataPath,
-                dataMode: "CSL-M",
-                cslMode: "CSL",
                 access: {
                     groupID: false,
                     libraryKey: false
                 }
             }, null, 2));
+            process.exit();
         } else {
-            abort("config.json does not exist. Use the --init option.");
+            abort("config.json does not exist. To create a template to be edited, use the --init option.");
         }
     }
+    console.log("zsyncdown: opening config file at " + configFilePath);
     var cfg = JSON.parse(fs.readFileSync(configFilePath)
                          .toString()
                          .split("\n").filter(function(line){if(line.slice(0,2)==="//"){return false}else{return line}})
                          .join("\n"));
-    if (!cfg.dataMode || ["CSL", "CSL-M"].indexOf(cfg.dataMode) === -1) {
-        abort("dataMode must be set to \"CSL\" or \"CSL-M\" in " + configFilePath);
-    }
-    if (cfg.dataMode === "CSL") {
-        console.log("Using Zotero style");
-        cfg.styleName = "chicago-fullnote-bibliography.csl";
-    } else {
-        console.log("Using Jurism style");
-        cfg.styleName = "jm-chicago-fullnote-bibliography.csl";
-    }
+    cfg.styleName = "jm-cultexp.csl";
 
     cfg.fileExtFromKey = {};
 
@@ -96,19 +129,9 @@ function getConfig(opts, keyCacheJson) {
         fs.writeFileSync(keyCacheFile, JSON.stringify({library:0,items:{},attachments:{}}, null, 2));
     }
     console.log("zsyncdown: Using persistent cache file at " + keyCacheFile);
-    
     return cfg;
 }
 
-function handleError(e) {
-    console.log(e);
-    process.exit();
-}
-
-function abort(msg) {
-    console.log("zsyncdown ERROR: " + msg);
-    process.exit();
-}
 
 var Runner = function(opts, callbacks) {
     this.emptyPdfInfo = [];
@@ -123,10 +146,10 @@ var Runner = function(opts, callbacks) {
     this.style = getStyle(this.cfg);
 };
 
-Runner.prototype.callAPI = async function(uriStub, isAttachment, final) {
+Runner.prototype.callAPI = async function(uriStub, isAttachment, fin, verbose) {
     var ret = null;
     var itemsUrl = "https://api.zotero.org/groups/" + this.cfg.access.groupID + uriStub;
-    console.log("+ CALL " + itemsUrl);
+    // console.log("+ CALL " + itemsUrl);
     if (isAttachment) {
         ret = await superagent.get(itemsUrl)
             .buffer(true)
@@ -136,7 +159,7 @@ Runner.prototype.callAPI = async function(uriStub, isAttachment, final) {
         ret = await superagent.get(itemsUrl).set("content-type", "application/json").set("Authorization", "Bearer " + this.cfg.access.libraryKey);
     }
     if (ret.header["retry-after"]) {
-        if (final) {
+        if (fin) {
             throw "API call failed after retry: " + uriStub;
         } else {
             var retryAfter = parseInt(ret.header["retry-after"]);
@@ -271,13 +294,8 @@ Runner.prototype.versionDeltas = function(ret, oldVersions, newVersions) {
 
 Runner.prototype.getUpdateSpec = async function(newVersions) {
     var ret = newUpdateSpec();
-    try {
-        ret.items = this.versionDeltas(ret.items, this.oldVersions.items, newVersions.items);
-        console.log("ATTACHMENT getUpdateSpec");
-        ret.attachments = this.versionDeltas(ret.attachments, this.oldVersions.attachments, newVersions.attachments);
-    } catch (e) {
-        handleError(e);
-    }
+    ret.items = this.versionDeltas(ret.items, this.oldVersions.items, newVersions.items);
+    ret.attachments = this.versionDeltas(ret.attachments, this.oldVersions.attachments, newVersions.attachments);
     return ret;
 }
 
@@ -444,7 +462,7 @@ Runner.prototype.doDeletes = async function(updateSpec) {
 
 Runner.prototype.doAddUpdateItems = async function(updateSpec) {
     var transactionSize = 50;
-    console.log(`doAddUpdateItems`);
+    console.log(`Adding and updating item metadata ...`);
     try {
         var addSublists = [];
         while (updateSpec.items.add.length) {
@@ -483,7 +501,7 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
     // (b) missing from dir/files. If (a) & (b),
     // add its key to updateSpec.attachments.add.
     //
-    console.log(`doAddUpdateAttachments`);
+    console.log(`Adding and updating attachment metadata ...`);
     var filesDir = path.join(this.cfg.dirs.topDir, "files");
     try {
         var attachmentNameFromKey = {};
@@ -524,6 +542,7 @@ Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
             }
         }
         var attachmentsDone = {};
+        console.log(`Adding and updating attachment files ...`);
         for (var attachmentID of updateSpec.attachments.mod) {
             // Download the file for a modified attachment ID unconditionally if the metadata has changed
             if (this.newVersions[attachmentID] > this.oldVersions[attachmentID]) {
