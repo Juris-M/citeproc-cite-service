@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Home</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Home</h1>
+
+    
+
+
+
+    
+
+
+    <h3> </h3>
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    <section>
+        <article><h1>Overview</h1>
+<p>The <code>zsyncdown</code> utility provided by this package builds a set of local
+files from which a website containing citable documents can be
+maintained. The files are constructed from items and attachments
+stored in a Zotero group library maintained by Jurism clients, and
+item records include a citation generated using the CSL-M extensions
+to Jurism. Juris-M/citeproc-cite-service was developed by Frank Bennett and is a primary output of EURO-EXPERT (n.161814) funded by the European Research Council.</p>
+<h1>System Requirements</h1>
+<p>The package should work on any recent-ish version of NodeJS (it was
+written against v8.9.4) and the <code>npm</code> package manager.</p>
+<h1>Setup</h1>
+<h2>Installation and updates</h2>
+<p>The tool can be set up by cloning its GitHub repo, or directly via
+NPM.  The commands for updating the tool differ depending on which
+installation method is used.</p>
+<h3>Installing from NPM</h3>
+<p>To install directly from NPM, use the following command:</p>
+<pre class="prettyprint source lang-bash"><code>    bash> npm install --global citeproc-cite-service
+</code></pre>
+<p>In this case, the tool can be updated with the following
+command:</p>
+<pre class="prettyprint source lang-bash"><code>    bash> npm update citeproc-cite-service
+</code></pre>
+<h3>Installing from the GitHub repo</h3>
+<p>The following commands can be used to install the tool from a clone of
+the GitHub repository:</p>
+<pre class="prettyprint source lang-bash"><code>    bash> git clone https://github.com/Juris-M/citeproc-cite-service.git
+    bash> cd citeproc-cite-service
+    bash> npm install
+    bash> npm link
+</code></pre>
+<p>If tool is installed in this way, version updates can be pulled in with
+the following commands, issued within the repo directory:</p>
+<pre class="prettyprint source lang-bash"><code>    bash> git pull
+    bash> npm update
+</code></pre>
+<h2>Configuring callbacks</h2>
+<p>For initial testing, copy the file <code>callbacks-sample.js</code> to <code>callbacks.js</code>:</p>
+<pre class="prettyprint source lang-bash"><code>    bash> cp callbacks-sample.js callbacks.js
+</code></pre>
+<p>For purposes of illustration, the sample <code>callbacks-sample.js</code> file
+contains functions that will write the data necessary to sync local
+data with a Zotero library into a file hierarchy. The functions <em>can
+and should</em> be adapted to apply changes directly to the local data
+store that is to be synced.</p>
+<h2>Initializing the sync directory</h2>
+<p>Before use, the utility must be initialized in an empty data directory
+with the <code>--init</code> option. By default, this is the directory in which
+the <code>zsyncdown</code> command is executed. To specify a different data
+directory, use the <code>--data-dir</code> option.</p>
+<pre class="prettyprint source lang-bash"><code>    bash> zsyncdown --data-dir=/my/data/directory --init
+</code></pre>
+<p>or</p>
+<pre class="prettyprint source lang-bash"><code>    bash> zsyncdown --init
+</code></pre>
+<p>Initialization will create a template configuration file <code>config.json</code>
+in the data directory, with content like this:</p>
+<pre class="prettyprint source lang-javascript"><code>{
+    &quot;dataPath&quot;: &quot;/option/data-dir/or/cwd&quot;,
+    &quot;dataMode&quot;: &quot;CSL-M&quot;,
+    &quot;access&quot;: {
+        &quot;groupID&quot;: false,
+        &quot;libraryKey&quot;: false
+    }
+}
+</code></pre>
+<p>To complete configuration, set the <code>groupID</code> and <code>libraryKey</code> in the
+configuration file. The <code>groupID</code> is the string of numbers in a group
+URL on <code>zotero.org</code>:</p>
+<pre class="prettyprint source lang-bash"><code>    https://www.zotero.org/groups/123456/some-group-name
+</code></pre>
+<p>The <code>libraryKey</code> is a private key created in a Zotero user account with
+read permissions on the target group:</p>
+<pre class="prettyprint source lang-bash"><code>    https://www.zotero.org/settings/keys
+</code></pre>
+<p>The completed configuration file will look something like this (the comments in
+the header can be ignored, they will be stripped before JSON processing):</p>
+<pre class="prettyprint source lang-javascript"><code>// Configuration file for citeproc-cite-service
+// For details, see README.md or https://www.npmjs.com/package/citeproc-cite-service
+{
+  &quot;dataPath&quot;: &quot;/option/data-dir/or/cwd&quot;,
+  &quot;dataMode&quot;: &quot;CSL-M&quot;,
+  &quot;access&quot;: {
+    &quot;groupID&quot;: 123456,
+    &quot;libraryKey&quot;: &quot;aBcDeFg7HiJkLmN8oPqRsTu9&quot;
+  }
+}
+
+## Syncing
+
+</code></pre>
+<p>Once configuration is complete, running the utility will pull all items and their attachments
+from the target Zotero group, reporting API calls to  the console.</p>
+<pre class="prettyprint source lang-bash"><code>    bash> zsyncdown
+    zsyncdown: using data directory /option/data-dir/or/cwd
+    zsyncdown: opening config file at /option/data-dir/or/cwd/config.json
+    zsyncdown: Using persistent cache file at /option/data-dir/or/cwd/keyCache.json
+    syncDown: writing sync update into /option/data-dir/or/cwd/tmp/updates
+    + CALL https://api.zotero.org/groups/123456/items/top?itemType=-note&format=versions
+    + CALL https://api.zotero.org/groups/123456/items?itemType=attachment&format=versions
+    + CALL https://api.zotero.org/groups/123456/fulltext?since=0
+    + CALL https://api.zotero.org/groups/123456/items?itemKey=PHRY5VHZ,7D9KFCZU,Y4LHY5LW,JH29MAW8
+    + CALL https://api.zotero.org/groups/123456/items?itemKey=E88RYTR6,Q7WIUBSI,ZP96EPPB,AJW7NHLQ
+    + CALL https://api.zotero.org/groups/123456/items/E88RYTR6/fulltext
+    + CALL https://api.zotero.org/groups/123456/items/Q7WIUBSI/fulltext
+    + CALL https://api.zotero.org/groups/123456/items/ZP96EPPB/fulltext
+    + CALL https://api.zotero.org/groups/123456/items/AJW7NHLQ/fulltext
+    Done!
+</code></pre>
+<p>The Zotero library version and the downloaded item keys and versions
+are recorded in the data directory in a file <code>keyCache.json</code>. The
+contents of this file are used to limit API calls on subsequent runs
+of the utility.  The callback functions in the distributed
+<code>callbacks-sample.js</code> file will write update information into a
+subdirectory <code>updates</code>, with the following structure:</p>
+<pre class="prettyprint source lang-text"><code>updates
+    items
+        &lt;timestamp>
+            deletes.txt
+            add
+                &lt;key>.json
+                ...
+            mod
+                &lt;key>.json
+                ...
+        ...
+    attachments
+        &lt;timestamp>
+            deletes.txt
+            add
+                &lt;key>.json
+                ...
+            mod
+                &lt;key>.json
+                ...
+        ...
+    files
+        &lt;key>.pdf
+        ...
+</code></pre>
+<p>The <code>items</code> and <code>attachments</code> directories contain the data needed for
+the updates generated by each run of the utility:</p>
+<ul>
+<li><strong>deletes.txt:</strong> This is a newline-delimited list of item keys that
+should be removed from the local data store.</li>
+<li><strong>add:</strong> The files under this subdirectory contain the details for
+items to be added to the local data store.</li>
+<li><strong>mod:</strong> The files here contain the details for items that should
+be modified in the local data store.</li>
+</ul>
+<p>The <code>files</code> directory will be empty after performing the operations
+described above. To populate it with all current attachment files,
+run the utility with the <code>-f</code> option:</p>
+<pre class="prettyprint source lang-bash"><code>    bash> zsyncdown -f
+</code></pre>
+<p>This operation will take some time to complete.</p>
+<p>How this data is merged into the local data store will vary depending
+on the local environment. If desired, the functions in <code>callbacks.js</code>
+can be modified to perform direct database update operations.</p>
+<h1>Data structures</h1>
+<p>Data files written under the <code>add</code> and <code>mod</code> subdirectories by the
+distributed <code>callbacks-sample.js</code> functions are JSON structures that
+show the data available for use in updating a local data store.</p>
+<p>An update under <code>items</code> has the following top-level elements (see the
+bottom of this README for example output):</p>
+<ul>
+<li><strong>key:</strong> The key used to identify the item in the Zotero API.</li>
+<li><strong>citation:</strong> A formatted citation for the item, in HTML markup.
+If</li>
+<li><strong>country:</strong> The ISO country code of the item, derived from a tag
+prefixed with <code>cn:</code> (i.e. <code>cn:PL</code>).</li>
+<li><strong>tags:</strong> Any tags associated with the item.</li>
+<li><strong>cslItem:</strong> The item metadata in CSL JSON format. If the <code>dataMode</code>
+is set to <code>CSL-M</code> in <code>config.json</code> (the default), the data will
+include multilingual and extended fields. If set to <code>CSL</code>, any
+such fields will remain encoded in the <code>note</code> field.</li>
+</ul>
+<p>An update under <code>attachments</code> has the following top-level elements
+(see the bottom of this README for example output):</p>
+<ul>
+<li><strong>key:</strong> The key used to identify the attachment item in the Zotero
+API. This key will match the corresponding file in the <code>files</code>
+subdirectory.</li>
+<li><strong>parentKey:</strong> The key of the item with metadata describing this
+attachment item.</li>
+<li><strong>language:</strong> The language of this attachment text, derived from a tag
+on the <em>attachment</em> item with a prefix of <code>ln:</code> (i.e. <code>ln:PL</code>).</li>
+<li><strong>filename:</strong> The filename assigned to this attachment in Zotero.</li>
+<li><strong>fulltext:</strong> The full plain-text content of the attachment
+document (useful for indexing).</li>
+</ul>
+<h1>Limitations</h1>
+<ul>
+<li>Only two style variants are available (the CSL and
+CSL-M versions of Chicago Fullnote with Bibliography).</li>
+<li>Only PDF attachments are supported.</li>
+<li>Modifications to attachment files (PDFs) will not be synced down
+if the key of the attachment item does not change.</li>
+<li>Zotero collections and saved searches are ignored.</li>
+</ul>
+<h1>Update objects</h1>
+<h2>Items</h2>
+<p>Item update objects have six keys:</p>
+<ul>
+<li><code>key</code>: The identifier key assigned to the item by <code>zotero.org</code>.</li>
+<li><code>citation</code>: The formatted citation of the item.</li>
+<li><code>country</code>: The ISO country code of the item, uppercased.
+This value is derived from the first element of the colon-delimited jurisdiction
+ID set on <code>cslItem.jurisdiction</code>. The value defaults to an empty string.</li>
+<li><code>tags</code>: An array of objects, each with a single key <code>tag</code>, and a single value
+that is the name of the tag.</li>
+<li><code>relatedItems</code>: An array of <code>key</code> values.</li>
+<li><code>cslItem</code>: An object with keys and values that follow the
+<a href="http://docs.citationstyles.org/en/1.0.1/specification.html">CSL Specification</a>
+and <a href="https://citeproc-js.readthedocs.io/en/latest/csl-m/index.html">CSL-M: extensions to CSL</a>.</li>
+</ul>
+<p>The following is a sample item update object for a legal case:</p>
+<pre class="prettyprint source lang-javascript"><code>{
+  &quot;key&quot;: &quot;JH29MAW8&quot;,
+  &quot;citation&quot;: &quot;Uzasadnienie, SR dla Warszawy-Mokotowa w Warszawie, October 19, 2016, III K 1053/14&quot;,
+  &quot;country&quot;: &quot;PL&quot;,
+  &quot;tags&quot;: [
+    {
+      &quot;tag&quot;: &quot;Criminal&quot;
+    }
+  ],
+  &quot;relatedItems&quot;: [],
+  &quot;cslItem&quot;: {
+    &quot;type&quot;: &quot;legal_case&quot;,
+    &quot;abstract&quot;: &quot;Description of content&quot;,
+    &quot;authority&quot;: &quot;sr&quot;,
+    &quot;number&quot;: &quot;III K 1053/14&quot;,
+    &quot;issued&quot;: {
+      &quot;date-parts&quot;: [
+        [
+          2016,
+          10,
+          19
+        ]
+      ]
+    },
+    &quot;language&quot;: &quot;pl&quot;,
+    &quot;note&quot;: &quot;&quot;,
+    &quot;multi&quot;: {
+      &quot;main&quot;: {},
+      &quot;_keys&quot;: {}
+    },
+    &quot;call-number&quot;: &quot;PL351&quot;,
+    &quot;jurisdiction&quot;: &quot;pl:warsaw:warsaw:mokotow&quot;,
+    &quot;genre&quot;: &quot;Uzasadnienie&quot;,
+    &quot;id&quot;: &quot;JH29MAW8&quot;
+  }
+}
+</code></pre>
+<h2>Attachments</h2>
+<p>The following is a sample update object for an attachment to the sample item above:</p>
+<pre class="prettyprint source lang-javascript"><code>{
+  &quot;key&quot;: &quot;AJW7NHLQ&quot;,
+  &quot;parentKey&quot;: &quot;JH29MAW8&quot;,
+  &quot;language&quot;: &quot;pl&quot;,
+  &quot;filename&quot;: &quot;PL351.pdf&quot;,
+  &quot;fulltext&quot;: &quot;III K 1053/14 - uzasadnienie Sąd Rejonowy ... Polityka cookiesIndeksyKanały RSS\n\n&quot;
+}
+</code></pre></article>
+    </section>
+
+
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="callbacks.html">callbacks</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CSL_DATE_VARIABLES">CSL_DATE_VARIABLES</a></li><li><a href="global.html#getStyle">getStyle</a></li><li><a href="global.html#newUpdateSpec">newUpdateSpec</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Dec 01 2023 13:40:36 GMT+0900 (Japan Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
