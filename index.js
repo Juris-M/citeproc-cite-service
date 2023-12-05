@@ -8,15 +8,9 @@ const unzipper = require("unzipper");
 const tmp = require("tmp");
 tmp.setGracefulCleanup();
 
-const DateParser = require("citeproc").DateParser;
-const zoteroToCsl = require('zotero-to-csl');
-const zoteroToJurism = require('zotero2jurismcsl').convert;
-
-/** @function getStyle
- * @description Instantiates the citation processor.
- * @returns {Object}
- */
-const getStyle = require('./style').getStyle;
+const CSL = require("citeproc");
+const zoteroToCsl = require("zotero-to-csl");
+const zoteroToJurism = require("zotero2jurismcsl").convert;
 
 /** @namespace callbacks
  * @description Container carrying functions for performing
@@ -31,11 +25,13 @@ const getStyle = require('./style').getStyle;
 const callbacks = require('./callbacks').callbacks;
 
 /**
- * @description Write only the message of an error to console.
+ * @description Write the message of errors with a cause of 1
+ *   to console, otherwise write out the full trace of the
+ *   error.
  */
 function handleError(e) {
     if (e.cause == 1) {
-        console.log(`Error: ${e.message}`);
+        console.log(`ERROR: ${e.message}`);
     } else {
         console.log(e);
     }
@@ -43,10 +39,11 @@ function handleError(e) {
 }
 
 /** @function newUpdateSpec
- * @description Return a container for metadata necessary for downstream sync.
- * @prop {Object} items - parent-item metadata
- * @prop {Object} attachments - attachment metadata
- * @prop {Object} files - all files corresponding to downloaded attachment metadata files
+ * @description Return a unique container for object keys to be called for
+ *   downstream sync.
+ * @prop {Object} items - parent-item keys
+ * @prop {Object} attachments - attachment keys
+ * @prop {Object} files - keys of files corresponding to attachment metadata
  * @return {Object}
  */
 const newUpdateSpec = () => {
@@ -80,30 +77,59 @@ const CSL_DATE_VARIABLES = [
 ];
 
 /**
- * @description This is a messy monolith. Load the "config.json"
- *   configuration file from the data directory. If no file exists
- *   and the -i (--init) option is
- *   set, create one.  If loading is successful, set parameters,
- *   create a keyCache file if one does not exist, and return configuration
- *   as an object.
- * @returns {Object}
+ * 
  */
-function getConfig(opts, keyCacheJson) {
-    if (opts.d) {
-        var dataPath = opts.d;
-    } else {
-        var dataPath = process.cwd();
-    }
+function Config(opts) {
     console.log(`Running with node version ${process.version}`);
-    console.log("zsyncdown: using data directory " + dataPath);
-    if (opts.i && fs.readdirSync(dataPath).length > 0) {
+    this.opts = opts;
+    
+    this.scriptPath = path.dirname(require.main.filename);
+    this.dataPath = this.getDataPath();
+    this.configPath = path.join(this.dataPath, "config.json");
+    this.stylePath = path.join(this.scriptPath, "jm-cultexp.csl");
+    this.keyCachePath = path.join(this.dataPath, "keyCache.json");
+
+    this.fileExtFromKey = {};
+
+    this.checkDataDirExists();
+    this.checkEmptyDataDir();
+    console.log(`Using data directory ${this.dataPath}`);
+    
+    this.setupConfigFile();
+    Object.assign(this, this.readConfigFile());
+    this.checkAccessCredentials();
+
+    this.setupKeyCache();
+}
+
+Config.prototype.getDataPath = function() {
+    var ret;
+    if (this.opts.d) {
+        ret = this.opts.d;
+    } else {
+        ret = process.cwd();
+    }
+    return ret;
+}
+
+Config.prototype.checkDataDirExists = function() {
+    if (!fs.existsSync(this.dataPath)) {
+        var e = new Error("data directory does not exist", {cause:1});
+        throw e;
+    }
+}
+
+Config.prototype.checkEmptyDataDir = function() {
+    if (this.opts.i && fs.readdirSync(dataPath).length > 0) {
         var e = new Error("the -i option can only be used in an empty data directory", {cause:1});
         throw e;
     }
-    var configFilePath = path.join(dataPath, "config.json");
-    if (!fs.existsSync(configFilePath)) {
-        if (opts.i) {
-            fs.writeFileSync(configFilePath, "// Configuration file for citeproc-cite-service\n// For details, see README.md or https://www.npmjs.com/package/citeproc-cite-service\n" + JSON.stringify({
+}
+
+Config.prototype.setupConfigFile = function() {
+    if (!fs.existsSync(this.configPath)) {
+        if (this.opts.i) {
+            fs.writeFileSync(this.configPath, "// Configuration file for citeproc-cite-service\n// For details, see README.md or https://www.npmjs.com/package/citeproc-cite-service\n" + JSON.stringify({
                 dataPath: dataPath,
                 access: {
                     groupID: false,
@@ -116,57 +142,147 @@ function getConfig(opts, keyCacheJson) {
             throw e;
         }
     }
-    console.log("zsyncdown: opening config file at " + configFilePath);
-    var cfg = JSON.parse(fs.readFileSync(configFilePath)
-                         .toString()
-                         .split("\n").filter(function(line){if(line.slice(0,2)==="//"){return false}else{return line}})
-                         .join("\n"));
-    cfg.styleName = "jm-cultexp.csl";
-
-    cfg.fileExtFromKey = {};
-
-    if (!fs.existsSync(cfg.dataPath)) {
-        var e = new Error("data directory does not exist", {cause:1});
-        throw e;
-    }
-    var keyCacheFile = path.join(cfg.dataPath, keyCacheJson);
-    if (!fs.existsSync(keyCacheFile)) {
-        fs.writeFileSync(keyCacheFile, JSON.stringify({library:0,items:{},attachments:{}}, null, 2));
-    }
-    console.log("zsyncdown: Using persistent cache file at " + keyCacheFile);
-    return cfg;
 }
 
+Config.prototype.readConfigFile = function() {
+    function nixComments(line) {
+        if (line.slice(0,2) === "//") {
+            return false
+        } else {
+            return line
+        }
+    }
+    var json = fs.readFileSync(this.configPath).toString();
+    json = json.split("\n")
+        .filter(line => nixComments(line))
+        .join("\n");
+    return JSON.parse(json);
+}
 
-var Runner = function(opts, callbacks) {
-    this.emptyPdfInfo = [];
-    this.keyCacheJson = "keyCache.json";
-    this.cfg = getConfig(opts, this.keyCacheJson);
-    this.cfg.opts = opts;
-    if (!this.cfg.access || !this.cfg.access.groupID || !this.cfg.access.libraryKey) {
+Config.prototype.checkAccessCredentials = function() {
+    if (!this.access || !this.access.groupID || !this.access.libraryKey) {
         var e = new Error("no access credentials found in config. See the README.", {cause:1});
         throw e;
     }
-    this.callbacks = callbacks;
-    this.oldVersions = JSON.parse(fs.readFileSync(path.join(this.cfg.dataPath, this.keyCacheJson)));
-    this.style = getStyle(this.cfg);
+}
+
+Config.prototype.setupKeyCache = function() {
+    if (!fs.existsSync(this.keyCachePath)) {
+        fs.writeFileSync(this.keyCachePath, JSON.stringify({library:0,items:{},attachments:{}}, null, 2));
+    }
+}
+
+Config.prototype.getKeyCache = function() {
+    return JSON.parse(fs.readFileSync(this.keyCachePath));
+}
+
+var Sys = function(cfg){
+    this.cfg = cfg;
+    this.abbrevs = { "default": new CSL.AbbreviationSegments() };
+    this.items = {};
+    this.modulesPath = path.join(path.dirname(require.main.filename), "style-modules");
+    this.localesPath = require("citeproc-locales");
+    this.getAbbrevs = require("citeproc-abbrevs").getAbbrevs;
 };
 
-Runner.prototype.callAPI = async function(uriStub, isAttachment, fin, verbose) {
+Sys.prototype.retrieveItem = function(id){
+    var item = this.items[id];
+    if (item.jurisdiction) {
+        var countryID = item.jurisdiction.replace(/:.*$/, "");
+        if (!this.abbrevs[countryID]) {
+            this.abbrevs = Object.assign(this.abbrevs, this.getAbbrevs("auto-" + countryID));
+        }
+    }
+    return this.items[id];
+};
+
+Sys.prototype.retrieveLocale = function(lang){
     var ret = null;
-    var itemsUrl = "https://api.zotero.org/groups/" + this.cfg.access.groupID + uriStub;
-    // console.log("+ CALL " + itemsUrl);
+    try {
+        ret = fs.readFileSync(path.join(this.localesPath, "locales-"+lang+".xml")).toString();
+        ret = ret.replace(/\s*<\?[^>]*\?>\s*\n/g, "");
+    } catch (e) {
+        ret = false;
+    }
+    return ret;
+};
+
+Sys.prototype.retrieveStyleModule = function(jurisdiction, preference) {
+    var ret = null;
+    var id = [jurisdiction];
+    if (preference) {
+        id.push(preference);
+    }
+    id = id.join("-");
+    try {
+        ret = fs.readFileSync(path.join(this.modulesPath, "juris-" + id + ".csl")).toString();
+    } catch (e) {}
+    return ret;
+};
+
+Sys.prototype.getAbbreviation = function(dummyListNameVar, obj, jurisdiction, category, key){
+    if (!this.abbrevs[jurisdiction]) {
+        this.abbrevs[jurisdiction] = new CSL.AbbreviationSegments();
+    }
+    if (!obj[jurisdiction]) {
+        obj[jurisdiction] = new CSL.AbbreviationSegments();
+    }    
+    var jurisdictions = ["default"];
+    if (jurisdiction !== "default") {
+        jurisdictions.push(jurisdiction);
+    }
+    jurisdictions.reverse();
+    var haveHit = false;
+    for (var i = 0, ilen = jurisdictions.length; i < ilen; i += 1) {
+        var myjurisdiction = jurisdictions[i];
+        if (this.abbrevs[myjurisdiction] && this.abbrevs[myjurisdiction][category] && this.abbrevs[myjurisdiction][category][key]) {
+            obj[myjurisdiction][category][key] = this.abbrevs[myjurisdiction][category][key];
+            jurisdiction = myjurisdiction;
+            haveHit = true;
+            break;
+        }
+    }
+    if (!haveHit && category === "place" && (key.length === 2 || key.indexOf(":") > -1)) {
+        for (var i = 0, ilen = jurisdictions.length; i < ilen; i += 1) {
+            var myjurisdiction = jurisdictions[i];
+            var upperKey = key.toUpperCase();
+            if (this.abbrevs[myjurisdiction] && this.abbrevs[myjurisdiction][category] && this.abbrevs[myjurisdiction][category][upperKey]) {
+                obj[myjurisdiction][category][key] = this.abbrevs[myjurisdiction][category][upperKey];
+                jurisdiction = myjurisdiction;
+                haveHit = true;
+                break;
+            }
+        }
+    }
+    return jurisdiction;
+};
+
+function ApiFetch(cfg) {
+    this.cfg = cfg;
+    this.transactionSize = 25;
+    this.attachmentNameFromKey = {};
+    this.attachmentsDone = {};
+    this.newVersions = this.callVersions();
+}
+
+ApiFetch.prototype.callAPI = async function(uriStub, isAttachment, fin) {
+    var ret = null;
+    var itemsUrl = `https://api.zotero.org/groups/${this.cfg.access.groupID}${uriStub}`;
     if (isAttachment) {
         ret = await superagent.get(itemsUrl)
             .buffer(true)
             .parse(superagent.parse.image)
-            .set("Authorization", "Bearer " + this.cfg.access.libraryKey);
+            .set("Authorization", `Bearer ${this.cfg.access.libraryKey}`);
     } else {
-        ret = await superagent.get(itemsUrl).set("content-type", "application/json").set("Authorization", "Bearer " + this.cfg.access.libraryKey);
+        ret = await superagent
+            .get(itemsUrl)
+            .set("content-type", "application/json")
+            .set("Authorization", `Bearer ${this.cfg.access.libraryKey}`);
     }
     if (ret.header["retry-after"]) {
         if (fin) {
-            throw "API call failed after retry: " + uriStub;
+            var e = new Error(`API call failed after retry: ${uriStub}`, {cause:1});
+            throw e;
         } else {
             var retryAfter = parseInt(ret.header["retry-after"]);
             await sleep(retryAfter);
@@ -176,18 +292,172 @@ Runner.prototype.callAPI = async function(uriStub, isAttachment, fin, verbose) {
     return ret;
 }
 
+ApiFetch.prototype.getVersions = async function(uriStub) {
+    var ret = null;
+    var ret = await this.callAPI(uriStub);
+    var libraryVersion = ret.header["last-modified-version"];
+    var keyVersions = JSON.parse(ret.text);
+    return {
+        library: libraryVersion,
+        keys: keyVersions
+    };
+};
+
+ApiFetch.prototype.callVersions = async function() {
+    var ret = {
+        library: null,
+        items: null,
+        attachments: null
+    };
+    var versions = await this.getVersions("/items/top?itemType=-note&format=versions");
+    ret.library = versions.library;
+    ret.items = versions.keys;
+    versions = await this.getVersions("/items?itemType=attachment&format=versions");
+    ret.attachments = versions.keys;
+    return ret;
+};
+
+ApiFetch.prototype.doDeletes = async function(updateSpec) {
+    await callbacks.attachments.del.call(this.cfg, updateSpec.attachments.del);
+    for (var attachmentKey of updateSpec.attachments.del) {
+        delete this.cacheVersions.attachments[attachmentKey];
+    }
+    await callbacks.items.del.call(this.cfg, updateSpec.items.del);
+    for (var itemKey of updateSpec.items.del) {
+        delete this.cacheVersions.items[itemKey];
+    }
+}
+
+ApiFetch.prototype.addItems = async function(updateSpec) {
+    var addSublists = [];
+    while (updateSpec.items.add.length) {
+        addSublists.push(updateSpec.items.add.slice(0, this.transactionSize));
+        updateSpec.items.add = updateSpec.items.add.slice(this.transactionSize);
+    }
+    for (var sublist of addSublists) {
+        var items = await this.getObjectsByKey(sublist);
+        for (var item of items) {
+            var siteItem = this.buildSiteItem(item);
+            await callbacks.items.add.call(this.cfg, siteItem);
+        }
+    }
+}
+
+ApiFetch.prototype.modItems = async function(updateSpec) {
+    var modSublists = [];
+    while (updateSpec.items.mod.length) {
+        modSublists.push(updateSpec.items.mod.slice(0, this.transactionSize));
+        updateSpec.items.mod = updateSpec.items.mod.slice(this.transactionSize);
+    }
+    for (var sublist of modSublists) {
+        var items = await this.getObjectsByKey(sublist);
+        for (var item of items) {
+            var siteItem = this.buildSiteItem(item);
+            await callbacks.items.mod.call(this.cfg, siteItem);
+        }
+    }
+}
+
+ApiFetch.prototype.doAddUpdateItems = async function(updateSpec) {
+    console.log(`Adding and updating item metadata ...`);
+    await this.addItems(updateSpec);
+    await this.modItems(updateSpec);
+}
+
+ApiFetch.prototype.addAttachments = async function(updateSpec) {
+    var addSublists = [];
+    while (updateSpec.attachments.add.length) {
+        addSublists.push(updateSpec.attachments.add.slice(0, transactionSize));
+        updateSpec.attachments.add = updateSpec.attachments.add.slice(transactionSize);
+    }
+    for (var sublist of addSublists) {
+        var attachments = await this.getObjectsByKey(sublist);
+        for (var attachment of attachments) {
+            var siteAttachment = await this.buildSiteAttachment(attachment);
+		    this.attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
+            await callbacks.attachments.add.call(this.cfg, siteAttachment);
+        }
+    }
+}
+
+ApiFetch.prototype.modAttachments = async function(updateSpec) {
+    var modSublists = [];
+    while (updateSpec.attachments.mod.length) {
+        modSublists.push(updateSpec.attachments.mod.slice(0, transactionSize));
+        updateSpec.attachments.mod = updateSpec.attachments.mod.slice(transactionSize);
+    }
+    for (var sublist of modSublists) {
+        var attachments = await this.getObjectsByKey(sublist);
+        for (var attachment of attachments) {
+            var siteAttachment = await this.buildSiteAttachment(attachment);
+		    this.attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
+            await callbacks.attachments.mod.call(this.cfg, siteAttachment);
+        }
+    }
+}
+
+ApiFetch.prototype.addFiles = async function(updateSpec) {
+    for (var attachmentID of updateSpec.attachments.mod) {
+        if (this.newVersions[attachmentID] > this.cacheVersions[attachmentID]) {
+            // true as second argument expects attachment file content
+            var response = await this.callAPI("/items/" + attachmentID + "/file", true);
+	        var info = await this.getRealBufferAndExt(response.body);
+            await callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
+            attachmentsDone[attachmentID] = true;
+        }
+    };
+}
+
+ApiFetch.prototype.addMoreFiles = async function() {
+    for (var attachmentID in this.newVersions.attachments) {
+        if (attachmentsDone[attachmentID]) continue;
+        var attachmentExists = await callbacks.files.exists.call(this.cfg, attachmentID);
+        if (attachmentExists === false) {
+            // true as second argument expects attachment file content
+            var response = await this.callAPI("/items/" + attachmentID + "/file", true);
+	        var info = await this.getRealBufferAndExt(response.body);
+            await callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
+        };
+    }
+}
+
+ApiFetch.prototype.doAddUpdateAttachments = async function(updateSpec) {
+    console.log(`Adding and updating attachment metadata ...`);
+    var filesDir = path.join(this.cfg.dirs.topDir, "files");
+    console.log(`Adding and updating attachment files ...`);
+    await this.addAttachments(updateSpec);
+    await this.modAttachments(updateSpec);
+    await this.addFiles(updateSpec)
+    await this.addMoreFiles(updateSpec);
+    await callbacks.files.purge.call(this.cfg, updateSpec.attachments.del);
+}
+
+var Runner = function(opts) {
+    this.cfg = new Config(opts);
+    this.cacheVersions = this.cfg.getKeyCache();
+
+    this.emptyPdfInfo = [];
+};
+
+Runner.prototype.getStyle = function() {
+    var sys = new Sys();
+    var styleXml = fs.readFileSync(this.cfg.stylePath).toString();
+    var style = new CSL.Engine(sys, styleXml);
+    style.setSuppressTrailingPunctuation(true);
+    return style;
+}
+
 Runner.prototype.getRealBufferAndExt = async function(buf) {
     var tmpInfo = tmp.dirSync();
     var filePath = path.join(tmpInfo.name, "myfile");
     await fs.writeFileSync(filePath, buf)
-    var fileTyper = await import("file-type");
-    var fileInfo = await fileTyper.fileTypeFromFile(filePath);
+    var fileInfo = await this.fileTyper.fileTypeFromFile(filePath);
 	if (fileInfo.mime == "application/zip") {
         await this.unzip(filePath, tmpInfo.name);
         for (var fn of fs.readdirSync(tmpInfo.name)) {
             if (fn === "myfile") continue;
             var newFilePath = path.join(tmpInfo.name, fn);
-            fileInfo = await fileTyper.fileTypeFromFile(newFilePath);
+            fileInfo = await this.fileTyper.fileTypeFromFile(newFilePath);
             if (!fileInfo) {
                 fileInfo = this.fixFileTypeTxtFail(fileInfo, fn);
             }
@@ -230,56 +500,31 @@ Runner.prototype.unzip = async function(filePath, outputPath) {
     }
 }
 
-Runner.prototype.getVersions = async function(uriStub) {
-    var ret = null;
-    var ret = await this.callAPI(uriStub);
-    var libraryVersion = ret.header["last-modified-version"];
-    var keyVersions = JSON.parse(ret.text);
-    return {
-        library: libraryVersion,
-        keys: keyVersions
-    };
-};
-
-Runner.prototype.callVersions = async function() {
-    var ret = {
-        library: null,
-        items: null,
-        attachments: null
-    };
-    var versions = await this.getVersions("/items/top?itemType=-note&format=versions");
-    ret.library = versions.library;
-    ret.items = versions.keys;
-    versions = await this.getVersions("/items?itemType=attachment&format=versions");
-    ret.attachments = versions.keys;
-    return ret;
-};
-
 Runner.prototype.updateVersionCache = function(libraryVersion) {
-    this.oldVersions.library = libraryVersion;
-    fs.writeFileSync(path.join(this.cfg.dataPath, this.keyCacheJson), JSON.stringify(this.oldVersions, null, 2));
+    this.cacheVersions.library = libraryVersion;
+    fs.writeFileSync(this.cfg.keyCachePath, JSON.stringify(this.cacheVersions, null, 2));
 };
 
-Runner.prototype.getItems = async function(sublist) {
+Runner.prototype.getObjectsByKey = async function(sublist) {
     var ret = null;
     var keys = sublist.join(",");
-    var uriStub = "/items?itemKey=" + keys;
+    var uriStub = `/items?itemKey=${keys}`;
     ret = await this.callAPI(uriStub);
     ret = JSON.parse(ret.text);
     ret = ret.map(o => o.data);
     return ret;
 }
 
-Runner.prototype.versionDeltas = function(ret, oldVersions, newVersions) {
-    for (var key in oldVersions) {
+Runner.prototype.versionDeltas = function(ret, cacheVersions, newVersions) {
+    for (var key in cacheVersions) {
         if (!newVersions[key]) {
             ret.del.push(key);
-        } else if (newVersions[key] > oldVersions[key]) {
+        } else if (this.newVersions[key] > cacheVersions[key]) {
             ret.mod.push(key);
         }
     }
     for (var key in newVersions) {
-        if (!oldVersions[key]) {
+        if (!cacheVersions[key]) {
             ret.add.push(key);
         }
     }
@@ -288,15 +533,16 @@ Runner.prototype.versionDeltas = function(ret, oldVersions, newVersions) {
 
 Runner.prototype.getUpdateSpec = async function(newVersions) {
     var ret = newUpdateSpec();
-    ret.items = this.versionDeltas(ret.items, this.oldVersions.items, newVersions.items);
-    ret.attachments = this.versionDeltas(ret.attachments, this.oldVersions.attachments, newVersions.attachments);
+    ret.items = this.versionDeltas(ret.items, this.cacheVersions.items, newVersions.items);
+    ret.attachments = this.versionDeltas(ret.attachments, this.cacheVersions.attachments, newVersions.attachments);
     return ret;
 }
 
 Runner.prototype.extractTag = function(arr, prefix, defaultValue) {
     var ret = defaultValue;
     if (prefix.slice(-1) !== ":") {
-        throw new Error("Invalid prefix spec: must end in a colon (:)");
+        var e = new Error("Invalid prefix spec: must end in a colon (:)", {cause:1});
+        throw e;
     }
     var offset = prefix.length;
     for (var i=arr.length-1;i>-1;i--) {
@@ -317,28 +563,29 @@ Runner.prototype.extractCountry = function(jurisdiction) {
     return ret;
 }
 
-Runner.prototype.buildSiteItem = function(item) {
-    var itemKey = item.key;
-    var itemVersion = item.version;
-    this.oldVersions.items[itemKey] = itemVersion;
-    delete item.key;
-    delete item.version;
-    delete item.dateAdded;
-    delete item.dateModified;
-    var cslItemZotero = zoteroToCsl(item);
     // Okay. This is ugly. zoteroToCsl straight off npm doesn't
     // convert string dates to the CSL array form, so we hack in
     // a fix for those entries here.
-    for (var fieldName of CSL_DATE_VARIABLES) {
-        if ("string" === typeof cslItemZotero[fieldName]) {
-            cslItemZotero[fieldName] = DateParser.parseDateToArray(cslItemZotero[fieldName]);
-        }
-    }
+
     
     // Okay. This is also ugly. zoteroToJurism() modifies the
     // object in place, as well as returning it as result.
     // If it is not recomposed here, cslItemZotero will be
     // unencoded as a side effect.
+Runner.prototype.buildSiteItem = function(item) {
+    var itemKey = item.key;
+    var itemVersion = item.version;
+    this.cacheVersions.items[itemKey] = itemVersion;
+    delete item.key;
+    delete item.version;
+    delete item.dateAdded;
+    delete item.dateModified;
+    var cslItemZotero = zoteroToCsl(item);
+    for (var fieldName of CSL_DATE_VARIABLES) {
+        if ("string" === typeof cslItemZotero[fieldName]) {
+            cslItemZotero[fieldName] = CSL.DateParser.parseDateToArray(cslItemZotero[fieldName]);
+        }
+    }
     var cslItemJurism = zoteroToJurism({data:item}, JSON.parse(JSON.stringify(cslItemZotero)));
     var cslItem = cslItemJurism;
     var cslJsonItem = cslItemZotero;
@@ -387,12 +634,12 @@ Runner.prototype.buildSiteItem = function(item) {
     }
 }
 
-Runner.prototype.buildSiteAttachment = function(attachment, fulltext){
+Runner.prototype.buildSiteAttachment = function(attachment){
     var language = this.extractTag(attachment.tags, "LN:", "en");
     var type = this.extractTag(attachment.tags, "TY:", false);
     var ocr = this.extractTag(attachment.tags, "OCR:", false);
 
-    this.oldVersions.attachments[attachment.key] = attachment.version;
+    this.cacheVersions.attachments[attachment.key] = attachment.version;
     if (this.cfg.opts.y) {
         if (attachment.filename === "empty.pdf") {
             this.emptyPdfInfo.push(attachment);
@@ -403,7 +650,6 @@ Runner.prototype.buildSiteAttachment = function(attachment, fulltext){
         parentKey: attachment.parentItem,
         language: language,
         filename: attachment.title,
-        fulltext: fulltext,
         note: attachment.note
     };
     if (type) {
@@ -416,170 +662,34 @@ Runner.prototype.buildSiteAttachment = function(attachment, fulltext){
 
 }
 
-Runner.prototype.getFulltext = async function(itemKey) {
-    var uriStub = "/items/" + itemKey +"/fulltext";
-    try {
-        res = await this.callAPI(uriStub);
-        res = res.text;
-        res = JSON.parse(res).content;
-    } catch (e) {
-        if (e.status == 404) {
-            res = false;
-        } else {
-            var e = new Error(`failure attempting to fetch full text of file with key ${itemKey}`, {cause:1});
-            throw e;
-        }
-    }
-    return res;
-}
-
-Runner.prototype.doDeletes = async function(updateSpec) {
-    await this.callbacks.attachments.del.call(this.cfg, updateSpec.attachments.del);
-    for (var attachmentKey of updateSpec.attachments.del) {
-        delete this.oldVersions.attachments[attachmentKey];
-    }
-    await this.callbacks.items.del.call(this.cfg, updateSpec.items.del);
-    for (var itemKey of updateSpec.items.del) {
-        delete this.oldVersions.items[itemKey];
-    }
-}
-
-Runner.prototype.doAddUpdateItems = async function(updateSpec) {
-    var transactionSize = 50;
-    console.log(`Adding and updating item metadata ...`);
-    var addSublists = [];
-    while (updateSpec.items.add.length) {
-        addSublists.push(updateSpec.items.add.slice(0, transactionSize));
-        updateSpec.items.add = updateSpec.items.add.slice(transactionSize);
-    }
-    for (var sublist of addSublists) {
-        var items = await this.getItems(sublist);
-        for (var item of items) {
-            var siteItem = this.buildSiteItem(item);
-            await this.callbacks.items.add.call(this.cfg, siteItem);
-        }
-    }
-    var modSublists = [];
-    while (updateSpec.items.mod.length) {
-        modSublists.push(updateSpec.items.mod.slice(0, transactionSize));
-        updateSpec.items.mod = updateSpec.items.mod.slice(transactionSize);
-    }
-    for (var sublist of modSublists) {
-        var items = await this.getItems(sublist);
-        for (var item of items) {
-            var siteItem = this.buildSiteItem(item);
-            await this.callbacks.items.mod.call(this.cfg, siteItem);
-        }
-    }
-}
-
-Runner.prototype.doAddUpdateAttachments = async function(updateSpec) {
-    var transactionSize = 25;
-    //
-    // FIX missing attachments. For each attachment in newVersions,
-    // check if it's (a) missing from updateSpec.attachments, and
-    // (b) missing from dir/files. If (a) & (b),
-    // add its key to updateSpec.attachments.add.
-    //
-    console.log(`Adding and updating attachment metadata ...`);
+Runner.prototype.yeetPlaceholderPdfFiles = function() {
     var filesDir = path.join(this.cfg.dirs.topDir, "files");
-    var attachmentNameFromKey = {};
-    var addSublists = [];
-    while (updateSpec.attachments.add.length) {
-        addSublists.push(updateSpec.attachments.add.slice(0, transactionSize));
-        updateSpec.attachments.add = updateSpec.attachments.add.slice(transactionSize);
-    }
-    for (var sublist of addSublists) {
-        var attachments = await this.getItems(sublist);
-        for (var attachment of attachments) {
-            var fulltext = await this.getFulltext(attachment.key);
-            if (!fulltext) {
-                // Triggers mod on next update if item still exists
-                this.oldVersions.attachments[attachment.key] = 0;
-            }
-            var siteAttachment = await this.buildSiteAttachment(attachment, fulltext);
-		    attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
-            await this.callbacks.attachments.add.call(this.cfg, siteAttachment);
+    for (var info of this.emptyPdfInfo) {
+        var filePath = path.join(filesDir, `${info.key}.pdf`);
+        if (fs.existsSync(filePath)) {
+            console.log(`removing empty placeholder PDF file: ${info.title} [${info.key}]`);
+            fs.unlinkSync(filePath);
         }
     }
-    var modSublists = [];
-    while (updateSpec.attachments.mod.length) {
-        modSublists.push(updateSpec.attachments.mod.slice(0, transactionSize));
-        updateSpec.attachments.mod = updateSpec.attachments.mod.slice(transactionSize);
-    }
-    for (var sublist of modSublists) {
-        var attachments = await this.getItems(sublist);
-        for (var attachment of attachments) {
-            var fulltext = await this.getFulltext(attachment.key);
-            if (!fulltext) {
-                // Triggers mod on next update if item still exists
-                this.oldVersions.attachments[attachment.key] = 0;
-            }
-            var siteAttachment = await this.buildSiteAttachment(attachment, fulltext);
-		    attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
-            await this.callbacks.attachments.mod.call(this.cfg, siteAttachment);
-        }
-    }
-    var attachmentsDone = {};
-    console.log(`Adding and updating attachment files ...`);
-    for (var attachmentID of updateSpec.attachments.mod) {
-        // Download the file for a modified attachment ID unconditionally if the metadata has changed
-        if (this.newVersions[attachmentID] > this.oldVersions[attachmentID]) {
-            // true as second argument expects attachment file content
-            var response = await this.callAPI("/items/" + attachmentID + "/file", true);
-	        var info = await this.getRealBufferAndExt(response.body);
-            await this.callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
-            attachmentsDone[attachmentID] = true;
-        }
-    };
-    for (var attachmentID in this.newVersions.attachments) {
-        if (attachmentsDone[attachmentID]) continue;
-        var attachmentExists = await this.callbacks.files.exists.call(this.cfg, attachmentID);
-        if (attachmentExists === false) {
-            // true as second argument expects attachment file content
-            var response = await this.callAPI("/items/" + attachmentID + "/file", true);
-	        var info = await this.getRealBufferAndExt(response.body);
-            await this.callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
-        };
-    }
-    await this.callbacks.files.purge.call(this.cfg, updateSpec.attachments.del);
 }
 
 Runner.prototype.run = async function() {
-    await this.callbacks.init.call(this.cfg);
-    var newVersions = await this.callVersions();
-    this.newVersions = newVersions;
-
-    var updateSpec = await this.getUpdateSpec(newVersions);
-
-    // Open a DB transaction if required
-    await this.callbacks.openTransaction.call(this.cfg);
+    this.fileTyper = await import("file-type");
+    apiFetch = new ApiFetch(this.cfg);
     
-    // Delete things for deletion, beginning with attachments
-    await this.doDeletes(updateSpec);
-    
-    // Works in sets of 50
-    await this.doAddUpdateItems(updateSpec);
+    var updateSpec = await this.getUpdateSpec(apiFetch.newVersions);
 
-    // Works in sets of 25
-    await this.doAddUpdateAttachments(updateSpec);
+    await callbacks.init.call(this.cfg);
+    await callbacks.openTransaction.call(this.cfg);
+    await apiFetch.doDeletes(updateSpec);
+    await apiFetch.doAddUpdateItems(updateSpec);
+    await apiFetch.doAddUpdateAttachments(updateSpec);
+    await callbacks.closeTransaction.call(this.cfg);
 
-    // Close a DB transaction if required
-    await this.callbacks.closeTransaction.call(this.cfg);
+    this.updateVersionCache(apiFetch.newVersions.library);
 
-    // Memo current library and item versions
-    this.updateVersionCache(newVersions.library);
-
-    // Finally, yeet placeholder PDFs if requested
     if (this.cfg.opts.y) {
-        var filesDir = path.join(this.cfg.dirs.topDir, "files");
-        for (var info of this.emptyPdfInfo) {
-            var filePath = path.join(filesDir, `${info.key}.pdf`);
-            if (fs.existsSync(filePath)) {
-                console.log(`removing empty placeholder PDF file: ${info.title} [${info.key}]`);
-                fs.unlinkSync(filePath);
-            }
-        }
+        this.yeetPlaceholderPdfFiles();
     }
     console.log("Done!");
 }
@@ -632,6 +742,9 @@ if (opts.d && (!path.isAbsolute(opts.d) || !fs.existsSync(opts.d) || !isDir(opts
     var e = new Error("when used, option -d must be set to an existing absolute directory path", {cause:1});
     handleError(e);
 }
-
-var runner = new Runner(opts, callbacks);
+try {
+    var runner = new Runner(opts);
+} catch (e) {
+    handleError(e);
+}
 runner.run().catch( e => handleError(e) );
