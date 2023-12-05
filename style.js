@@ -5,7 +5,7 @@ const Sys = require("./sys").Sys;
 
 function getStyle(cfg) {
     var sys = new Sys();
-    var stylePath = path.join(path.dirname(require.main.filename), cfg.styleName);
+    var stylePath = cfg.stylePath;
     var styleXml = fs.readFileSync(stylePath).toString();
     
     var style = new CSL.Engine(sys, styleXml);
