@@ -89,8 +89,6 @@ function Config(opts) {
     this.stylePath = path.join(this.scriptPath, "jm-cultexp.csl");
     this.keyCachePath = path.join(this.dataPath, "keyCache.json");
 
-    this.fileExtFromKey = {};
-
     this.checkDataDirExists();
     this.checkEmptyDataDir();
     console.log(`Using data directory ${this.dataPath}`);
@@ -257,15 +255,28 @@ Sys.prototype.getAbbreviation = function(dummyListNameVar, obj, jurisdiction, ca
     return jurisdiction;
 };
 
-function ApiFetch(cfg) {
+function ApiEngine(cfg, cacheVersions) {
     this.cfg = cfg;
+    this.cacheVersions = cacheVersions;
     this.transactionSize = 25;
     this.attachmentNameFromKey = {};
     this.attachmentsDone = {};
-    this.newVersions = this.callVersions();
+    this.style = this.getStyle();
 }
 
-ApiFetch.prototype.callAPI = async function(uriStub, isAttachment, fin) {
+ApiEngine.prototype.init = async function() {
+    this.fileTyper = await import("file-type");
+};
+
+ApiEngine.prototype.getStyle = function() {
+    var sys = new Sys();
+    var styleXml = fs.readFileSync(this.cfg.stylePath).toString();
+    var style = new CSL.Engine(sys, styleXml);
+    style.setSuppressTrailingPunctuation(true);
+    return style;
+}
+
+ApiEngine.prototype.callAPI = async function(uriStub, isAttachment, fin) {
     var ret = null;
     var itemsUrl = `https://api.zotero.org/groups/${this.cfg.access.groupID}${uriStub}`;
     if (isAttachment) {
@@ -292,7 +303,17 @@ ApiFetch.prototype.callAPI = async function(uriStub, isAttachment, fin) {
     return ret;
 }
 
-ApiFetch.prototype.getVersions = async function(uriStub) {
+ApiEngine.prototype.getObjectsByKey = async function(sublist) {
+    var ret = null;
+    var keys = sublist.join(",");
+    var uriStub = `/items?itemKey=${keys}`;
+    ret = await this.callAPI(uriStub);
+    ret = JSON.parse(ret.text);
+    ret = ret.map(o => o.data);
+    return ret;
+}
+
+ApiEngine.prototype.getVersions = async function(uriStub) {
     var ret = null;
     var ret = await this.callAPI(uriStub);
     var libraryVersion = ret.header["last-modified-version"];
@@ -303,7 +324,7 @@ ApiFetch.prototype.getVersions = async function(uriStub) {
     };
 };
 
-ApiFetch.prototype.callVersions = async function() {
+ApiEngine.prototype.callVersions = async function() {
     var ret = {
         library: null,
         items: null,
@@ -317,7 +338,7 @@ ApiFetch.prototype.callVersions = async function() {
     return ret;
 };
 
-ApiFetch.prototype.doDeletes = async function(updateSpec) {
+ApiEngine.prototype.doDeletes = async function(updateSpec) {
     await callbacks.attachments.del.call(this.cfg, updateSpec.attachments.del);
     for (var attachmentKey of updateSpec.attachments.del) {
         delete this.cacheVersions.attachments[attachmentKey];
@@ -328,7 +349,7 @@ ApiFetch.prototype.doDeletes = async function(updateSpec) {
     }
 }
 
-ApiFetch.prototype.addItems = async function(updateSpec) {
+ApiEngine.prototype.addItems = async function(updateSpec) {
     var addSublists = [];
     while (updateSpec.items.add.length) {
         addSublists.push(updateSpec.items.add.slice(0, this.transactionSize));
@@ -343,7 +364,7 @@ ApiFetch.prototype.addItems = async function(updateSpec) {
     }
 }
 
-ApiFetch.prototype.modItems = async function(updateSpec) {
+ApiEngine.prototype.modItems = async function(updateSpec) {
     var modSublists = [];
     while (updateSpec.items.mod.length) {
         modSublists.push(updateSpec.items.mod.slice(0, this.transactionSize));
@@ -358,21 +379,22 @@ ApiFetch.prototype.modItems = async function(updateSpec) {
     }
 }
 
-ApiFetch.prototype.doAddUpdateItems = async function(updateSpec) {
+ApiEngine.prototype.doAddUpdateItems = async function(updateSpec) {
     console.log(`Adding and updating item metadata ...`);
     await this.addItems(updateSpec);
     await this.modItems(updateSpec);
 }
 
-ApiFetch.prototype.addAttachments = async function(updateSpec) {
+ApiEngine.prototype.addAttachments = async function(updateSpec) {
     var addSublists = [];
     while (updateSpec.attachments.add.length) {
-        addSublists.push(updateSpec.attachments.add.slice(0, transactionSize));
-        updateSpec.attachments.add = updateSpec.attachments.add.slice(transactionSize);
+        addSublists.push(updateSpec.attachments.add.slice(0, this.transactionSize));
+        updateSpec.attachments.add = updateSpec.attachments.add.slice(this.transactionSize);
     }
     for (var sublist of addSublists) {
         var attachments = await this.getObjectsByKey(sublist);
         for (var attachment of attachments) {
+            updateSpec.files.push(attachment.key);
             var siteAttachment = await this.buildSiteAttachment(attachment);
 		    this.attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
             await callbacks.attachments.add.call(this.cfg, siteAttachment);
@@ -380,15 +402,16 @@ ApiFetch.prototype.addAttachments = async function(updateSpec) {
     }
 }
 
-ApiFetch.prototype.modAttachments = async function(updateSpec) {
+ApiEngine.prototype.modAttachments = async function(updateSpec) {
     var modSublists = [];
     while (updateSpec.attachments.mod.length) {
-        modSublists.push(updateSpec.attachments.mod.slice(0, transactionSize));
-        updateSpec.attachments.mod = updateSpec.attachments.mod.slice(transactionSize);
+        modSublists.push(updateSpec.attachments.mod.slice(0, this.transactionSize));
+        updateSpec.attachments.mod = updateSpec.attachments.mod.slice(this.transactionSize);
     }
     for (var sublist of modSublists) {
         var attachments = await this.getObjectsByKey(sublist);
         for (var attachment of attachments) {
+            updateSpec.files.push(attachment.key);
             var siteAttachment = await this.buildSiteAttachment(attachment);
 		    this.attachmentNameFromKey[siteAttachment.key] = siteAttachment.filename;
             await callbacks.attachments.mod.call(this.cfg, siteAttachment);
@@ -396,171 +419,21 @@ ApiFetch.prototype.modAttachments = async function(updateSpec) {
     }
 }
 
-ApiFetch.prototype.addFiles = async function(updateSpec) {
-    for (var attachmentID of updateSpec.attachments.mod) {
-        if (this.newVersions[attachmentID] > this.cacheVersions[attachmentID]) {
-            // true as second argument expects attachment file content
-            var response = await this.callAPI("/items/" + attachmentID + "/file", true);
-	        var info = await this.getRealBufferAndExt(response.body);
-            await callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
-            attachmentsDone[attachmentID] = true;
-        }
+ApiEngine.prototype.addOrModFiles = async function(updateSpec, newVersions) {
+    for (var attachmentID of updateSpec.files) {
+        console.log(`Unconditionally grab file: ${attachmentID}`);
+        await callbacks.files.add.call(this, attachmentID);
     };
 }
 
-ApiFetch.prototype.addMoreFiles = async function() {
-    for (var attachmentID in this.newVersions.attachments) {
-        if (attachmentsDone[attachmentID]) continue;
-        var attachmentExists = await callbacks.files.exists.call(this.cfg, attachmentID);
-        if (attachmentExists === false) {
-            // true as second argument expects attachment file content
-            var response = await this.callAPI("/items/" + attachmentID + "/file", true);
-	        var info = await this.getRealBufferAndExt(response.body);
-            await callbacks.files.add.call(this.cfg, attachmentID, info.buf, info.fileInfo.ext);
-        };
-    }
-}
-
-ApiFetch.prototype.doAddUpdateAttachments = async function(updateSpec) {
+ApiEngine.prototype.doAddUpdateAttachments = async function(updateSpec, newVersions) {
     console.log(`Adding and updating attachment metadata ...`);
     var filesDir = path.join(this.cfg.dirs.topDir, "files");
     console.log(`Adding and updating attachment files ...`);
     await this.addAttachments(updateSpec);
     await this.modAttachments(updateSpec);
-    await this.addFiles(updateSpec)
-    await this.addMoreFiles(updateSpec);
+    await this.addOrModFiles(updateSpec, newVersions)
     await callbacks.files.purge.call(this.cfg, updateSpec.attachments.del);
-}
-
-var Runner = function(opts) {
-    this.cfg = new Config(opts);
-    this.cacheVersions = this.cfg.getKeyCache();
-
-    this.emptyPdfInfo = [];
-};
-
-Runner.prototype.getStyle = function() {
-    var sys = new Sys();
-    var styleXml = fs.readFileSync(this.cfg.stylePath).toString();
-    var style = new CSL.Engine(sys, styleXml);
-    style.setSuppressTrailingPunctuation(true);
-    return style;
-}
-
-Runner.prototype.getRealBufferAndExt = async function(buf) {
-    var tmpInfo = tmp.dirSync();
-    var filePath = path.join(tmpInfo.name, "myfile");
-    await fs.writeFileSync(filePath, buf)
-    var fileInfo = await this.fileTyper.fileTypeFromFile(filePath);
-	if (fileInfo.mime == "application/zip") {
-        await this.unzip(filePath, tmpInfo.name);
-        for (var fn of fs.readdirSync(tmpInfo.name)) {
-            if (fn === "myfile") continue;
-            var newFilePath = path.join(tmpInfo.name, fn);
-            fileInfo = await this.fileTyper.fileTypeFromFile(newFilePath);
-            if (!fileInfo) {
-                fileInfo = this.fixFileTypeTxtFail(fileInfo, fn);
-            }
-            buf = fs.readFileSync(newFilePath);
-            break;
-        }
-    }
-    return {
-        fileInfo: fileInfo,
-        buf: buf
-    }
-}
-
-Runner.prototype.fixFileTypeTxtFail = function(fileInfo, fn) {
-    if (!fileInfo) {
-        fileInfo = {
-            ext: "pdf",
-            mime: "application/pdf"
-        }
-        if (fn.slice(-4) === ".txt") {
-            fileInfo.ext = "txt",
-            fileInfo.mime = "text/plain"
-        }
-    }
-    return fileInfo;
-}
-
-Runner.prototype.unzip = async function(filePath, outputPath) {
-    const zip = fs.createReadStream(filePath).pipe(unzipper.Parse({forceStream: true}));
-    for await (const entry of zip) {
-        var done = false;
-        const fileName = entry.path;
-        const type = entry.type; // 'Directory' or 'File'
-        const size = entry.vars.uncompressedSize; // There is also compressedSize;
-        if (!done) {
-            entry.pipe(fs.createWriteStream(path.join(outputPath, fileName)));
-        } else {
-            entry.autodrain();
-        }
-    }
-}
-
-Runner.prototype.updateVersionCache = function(libraryVersion) {
-    this.cacheVersions.library = libraryVersion;
-    fs.writeFileSync(this.cfg.keyCachePath, JSON.stringify(this.cacheVersions, null, 2));
-};
-
-Runner.prototype.getObjectsByKey = async function(sublist) {
-    var ret = null;
-    var keys = sublist.join(",");
-    var uriStub = `/items?itemKey=${keys}`;
-    ret = await this.callAPI(uriStub);
-    ret = JSON.parse(ret.text);
-    ret = ret.map(o => o.data);
-    return ret;
-}
-
-Runner.prototype.versionDeltas = function(ret, cacheVersions, newVersions) {
-    for (var key in cacheVersions) {
-        if (!newVersions[key]) {
-            ret.del.push(key);
-        } else if (this.newVersions[key] > cacheVersions[key]) {
-            ret.mod.push(key);
-        }
-    }
-    for (var key in newVersions) {
-        if (!cacheVersions[key]) {
-            ret.add.push(key);
-        }
-    }
-    return ret;
-}
-
-Runner.prototype.getUpdateSpec = async function(newVersions) {
-    var ret = newUpdateSpec();
-    ret.items = this.versionDeltas(ret.items, this.cacheVersions.items, newVersions.items);
-    ret.attachments = this.versionDeltas(ret.attachments, this.cacheVersions.attachments, newVersions.attachments);
-    return ret;
-}
-
-Runner.prototype.extractTag = function(arr, prefix, defaultValue) {
-    var ret = defaultValue;
-    if (prefix.slice(-1) !== ":") {
-        var e = new Error("Invalid prefix spec: must end in a colon (:)", {cause:1});
-        throw e;
-    }
-    var offset = prefix.length;
-    for (var i=arr.length-1;i>-1;i--) {
-        var tag = arr[i].tag ? arr[i].tag : arr[i];
-        if (tag.slice(0, offset) === prefix) {
-            ret = tag.slice(offset); 
-        }
-        arr = arr.slice(0, i).concat(arr.slice(i+1));
-    }
-    return ret;
-}
-
-Runner.prototype.extractCountry = function(jurisdiction) {
-    var ret = "";
-    if (jurisdiction) {
-        ret = jurisdiction.split(":")[0].toUpperCase();
-    }
-    return ret;
 }
 
     // Okay. This is ugly. zoteroToCsl straight off npm doesn't
@@ -572,7 +445,7 @@ Runner.prototype.extractCountry = function(jurisdiction) {
     // object in place, as well as returning it as result.
     // If it is not recomposed here, cslItemZotero will be
     // unencoded as a side effect.
-Runner.prototype.buildSiteItem = function(item) {
+ApiEngine.prototype.buildSiteItem = function(item) {
     var itemKey = item.key;
     var itemVersion = item.version;
     this.cacheVersions.items[itemKey] = itemVersion;
@@ -634,7 +507,32 @@ Runner.prototype.buildSiteItem = function(item) {
     }
 }
 
-Runner.prototype.buildSiteAttachment = function(attachment){
+ApiEngine.prototype.extractTag = function(arr, prefix, defaultValue) {
+    var ret = defaultValue;
+    if (prefix.slice(-1) !== ":") {
+        var e = new Error("Invalid prefix spec: must end in a colon (:)", {cause:1});
+        throw e;
+    }
+    var offset = prefix.length;
+    for (var i=arr.length-1;i>-1;i--) {
+        var tag = arr[i].tag ? arr[i].tag : arr[i];
+        if (tag.slice(0, offset) === prefix) {
+            ret = tag.slice(offset); 
+        }
+        arr = arr.slice(0, i).concat(arr.slice(i+1));
+    }
+    return ret;
+}
+
+ApiEngine.prototype.extractCountry = function(jurisdiction) {
+    var ret = "";
+    if (jurisdiction) {
+        ret = jurisdiction.split(":")[0].toUpperCase();
+    }
+    return ret;
+}
+
+ApiEngine.prototype.buildSiteAttachment = function(attachment){
     var language = this.extractTag(attachment.tags, "LN:", "en");
     var type = this.extractTag(attachment.tags, "TY:", false);
     var ocr = this.extractTag(attachment.tags, "OCR:", false);
@@ -662,7 +560,89 @@ Runner.prototype.buildSiteAttachment = function(attachment){
 
 }
 
-Runner.prototype.yeetPlaceholderPdfFiles = function() {
+ApiEngine.prototype.getRealBufferAndExt = async function(buf) {
+    var tmpInfo = tmp.dirSync();
+    var filePath = path.join(tmpInfo.name, "myfile");
+    await fs.writeFileSync(filePath, buf)
+    var fileInfo = await this.fileTyper.fileTypeFromFile(filePath);
+	if (fileInfo.mime == "application/zip") {
+        await this.unzip(filePath, tmpInfo.name);
+        for (var fn of fs.readdirSync(tmpInfo.name)) {
+            if (fn === "myfile") continue;
+            var newFilePath = path.join(tmpInfo.name, fn);
+            fileInfo = await this.fileTyper.fileTypeFromFile(newFilePath);
+            if (!fileInfo) {
+                fileInfo = this.fixFileTypeTxtFail(fileInfo, fn);
+            }
+            buf = fs.readFileSync(newFilePath);
+            break;
+        }
+    }
+    return {
+        fileInfo: fileInfo,
+        buf: buf
+    }
+}
+
+ApiEngine.prototype.fixFileTypeTxtFail = function(fileInfo, fn) {
+    if (!fileInfo) {
+        fileInfo = {
+            ext: "pdf",
+            mime: "application/pdf"
+        }
+        if (fn.slice(-4) === ".txt") {
+            fileInfo.ext = "txt",
+            fileInfo.mime = "text/plain"
+        }
+    }
+    return fileInfo;
+}
+
+ApiEngine.prototype.unzip = async function(filePath, outputPath) {
+    const zip = fs.createReadStream(filePath).pipe(unzipper.Parse({forceStream: true}));
+    for await (const entry of zip) {
+        var done = false;
+        const fileName = entry.path;
+        const type = entry.type; // 'Directory' or 'File'
+        const size = entry.vars.uncompressedSize; // There is also compressedSize;
+        if (!done) {
+            entry.pipe(fs.createWriteStream(path.join(outputPath, fileName)));
+        } else {
+            entry.autodrain();
+        }
+    }
+}
+
+ApiEngine.prototype.updateVersionCache = function(libraryVersion) {
+    this.cacheVersions.library = libraryVersion;
+    fs.writeFileSync(this.cfg.keyCachePath, JSON.stringify(this.cacheVersions, null, 2));
+};
+
+ApiEngine.prototype.versionDeltas = function(ret, cacheVersionSeg, newVersionSeg) {
+    for (var key in cacheVersionSeg) {
+        if (!newVersionSeg[key]) {
+            ret.del.push(key);
+        } else if (newVersionSeg[key] > cacheVersionSeg[key]) {
+            ret.mod.push(key);
+        }
+    }
+    for (var key in newVersionSeg) {
+        if (!cacheVersionSeg[key]) {
+            ret.add.push(key);
+        }
+    }
+    return ret;
+}
+
+ApiEngine.prototype.getUpdateSpec = async function(newVersions) {
+    var ret = newUpdateSpec();
+    ret.items = this.versionDeltas(ret.items, this.cacheVersions.items, newVersions.items);
+    ret.attachments = this.versionDeltas(ret.attachments, this.cacheVersions.attachments, newVersions.attachments);
+    ret.allfiles = Object.keys(newVersions.attachments);
+    return ret;
+}
+
+ApiEngine.prototype.yeetPlaceholderPdfFiles = function() {
     var filesDir = path.join(this.cfg.dirs.topDir, "files");
     for (var info of this.emptyPdfInfo) {
         var filePath = path.join(filesDir, `${info.key}.pdf`);
@@ -673,23 +653,27 @@ Runner.prototype.yeetPlaceholderPdfFiles = function() {
     }
 }
 
-Runner.prototype.run = async function() {
-    this.fileTyper = await import("file-type");
-    apiFetch = new ApiFetch(this.cfg);
+async function run() {
+    var cfg = new Config(opts);
+    var cacheVersions = cfg.getKeyCache();
+    var emptyPdfInfo = [];
+    var apiEngine = new ApiEngine(cfg, cacheVersions);
+    apiEngine.init();
+    var newVersions = await apiEngine.callVersions();
     
-    var updateSpec = await this.getUpdateSpec(apiFetch.newVersions);
+    var updateSpec = await apiEngine.getUpdateSpec(newVersions);
+    
+    await callbacks.init.call(cfg);
+    await callbacks.openTransaction.call(cfg);
+    await apiEngine.doDeletes(updateSpec);
+    await apiEngine.doAddUpdateItems(updateSpec, newVersions);
+    await apiEngine.doAddUpdateAttachments(updateSpec, newVersions);
+    await callbacks.closeTransaction.call(cfg);
 
-    await callbacks.init.call(this.cfg);
-    await callbacks.openTransaction.call(this.cfg);
-    await apiFetch.doDeletes(updateSpec);
-    await apiFetch.doAddUpdateItems(updateSpec);
-    await apiFetch.doAddUpdateAttachments(updateSpec);
-    await callbacks.closeTransaction.call(this.cfg);
+    apiEngine.updateVersionCache(newVersions.library);
 
-    this.updateVersionCache(apiFetch.newVersions.library);
-
-    if (this.cfg.opts.y) {
-        this.yeetPlaceholderPdfFiles();
+    if (cfg.opts.y) {
+        apiEngine.yeetPlaceholderPdfFiles();
     }
     console.log("Done!");
 }
@@ -742,9 +726,4 @@ if (opts.d && (!path.isAbsolute(opts.d) || !fs.existsSync(opts.d) || !isDir(opts
     var e = new Error("when used, option -d must be set to an existing absolute directory path", {cause:1});
     handleError(e);
 }
-try {
-    var runner = new Runner(opts);
-} catch (e) {
-    handleError(e);
-}
-runner.run().catch( e => handleError(e) );
+run().catch( e => handleError(e) );

@@ -53,15 +53,9 @@ var callbacks = {
             fs.writeFileSync(path.join(this.dirs.attachmentsDir, "deletes.txt"), keys.join("\n"));
         },
         add: async function(siteAttachment){
-            var m = siteAttachment.filename.match(/\.(pdf|txt|zip|rtf)$/);
-            var ext = m ? m[1] : "pdf";
-            this.fileExtFromKey[siteAttachment.key] = ext;
             fs.writeFileSync(path.join(this.dirs.attachmentsAdd, siteAttachment.key + ".json"), JSON.stringify(siteAttachment, null, 2));
         },
         mod: async function(siteAttachment){
-            var m = siteAttachment.filename.match(/\.(pdf|txt|zip|rtf)$/);
-            var ext = m ? m[1] : "pdf";
-            this.fileExtFromKey[siteAttachment.key] = ext;
             fs.writeFileSync(path.join(this.dirs.attachmentsMod, siteAttachment.key + ".json"), JSON.stringify(siteAttachment, null, 2));
         }
     },
@@ -77,17 +71,12 @@ var callbacks = {
                 }
             }
         },
-        exists: async function(key) {
-            if (!this.fileExtFromKey[key]) {
-                return null;
-            } else {
-                var filePath = path.join(this.dirs.files, key + "." + this.fileExtFromKey[key]);
-                return fs.existsSync(filePath);
-            }
-        },
-        add: async function(key, data){
-            var filePath = path.join(this.dirs.files, key + "." + this.fileExtFromKey[key])
-            fs.writeFileSync(filePath, data);
+        add: async function(key){
+            // true as second argument expects attachment file content
+            var response = await this.callAPI("/items/" + key + "/file", true);
+	        var info = await this.getRealBufferAndExt(response.body);
+            var filePath = path.join(this.cfg.dirs.files, `${key}.${info.fileInfo.ext}`)
+            fs.writeFileSync(filePath, info.buf);
         }
     }
 }

@@ -20,35 +20,19 @@ The tool can be set up by cloning its GitHub repo, or directly via
 NPM.  The commands for updating the tool differ depending on which
 installation method is used.
 
-### Installing from NPM
-
-To install directly from NPM, use the following command:
-
-``` bash
-    bash> npm install --global citeproc-cite-service
-```
-
-In this case, the tool can be updated with the following
-command:
-
-``` bash
-    bash> npm update citeproc-cite-service
-```
-
 ### Installing from the GitHub repo
 
 The following commands can be used to install the tool from a clone of
 the GitHub repository:
 
 ``` bash
-    bash> git clone https://github.com/Juris-M/citeproc-cite-service.git
+    bash> git clone --recursive https://github.com/Juris-M/citeproc-cite-service.git
     bash> cd citeproc-cite-service
     bash> npm install
     bash> npm link
 ```
 
-If tool is installed in this way, version updates can be pulled in with
-the following commands, issued within the repo directory:
+Version updates can be pulled in with the following commands, issued within the repo directory:
 
 ``` bash
     bash> git pull
@@ -64,7 +48,7 @@ For initial testing, copy the file `callbacks-sample.js` to `callbacks.js`:
     bash> cp callbacks-sample.js callbacks.js
 ```
 
-For purposes of illustration, the sample `callbacks-sample.js` file
+For purposes of illustration, the sample ``callbacks-sample.js`` file
 contains functions that will write the data necessary to sync local
 data with a Zotero library into a file hierarchy. The functions *can
 and should* be adapted to apply changes directly to the local data
@@ -114,7 +98,6 @@ the header can be ignored, they will be stripped before JSON processing):
 // For details, see README.md or https://www.npmjs.com/package/citeproc-cite-service
 {
   "dataPath": "/option/data-dir/or/cwd",
-  "dataMode": "CSL-M",
   "access": {
     "groupID": 123456,
     "libraryKey": "aBcDeFg7HiJkLmN8oPqRsTu9"
@@ -212,10 +195,13 @@ bottom of this README for example output):
 - **country:** The ISO country code of the item, derived from a tag
   prefixed with `cn:` (i.e. `cn:PL`).
 - **tags:** Any tags associated with the item.
-- **cslItem:** The item metadata in CSL JSON format. If the `dataMode`
-  is set to `CSL-M` in `config.json` (the default), the data will
-  include multilingual and extended fields. If set to `CSL`, any
-  such fields will remain encoded in the `note` field.
+- **cslItem:** The item metadata in CSL-M JSON format.
+- **cslJsonItem:** The item metadata in CSL JSON format, with
+  CSL-M extended fields encoded as serialized JSON under
+  their Jurism field names in the ``note`` field. This
+  data is suitable for import into Zotero or Jurism, and
+  if imported with the former, will sync correctly to
+  a Jurism client.
 
 An update under `attachments` has the following top-level elements
 (see the bottom of this README for example output):
